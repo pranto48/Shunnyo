@@ -33,7 +33,7 @@ function MainAppLayout() {
   }, []);
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex bg-background-deep text-slate-100 font-sans relative">
+    <div className="h-screen h-[100dvh] w-screen overflow-hidden flex bg-background-deep text-slate-100 font-sans relative">
       {/* Subtle Ambient Background Gradients */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent-cyan/10 rounded-full blur-3xl pointer-events-none" />

@@ -48,7 +48,7 @@ export default function ChatHeader() {
   };
 
   return (
-    <div className="h-16 px-4 border-b border-slate-800/80 bg-background-surface/80 backdrop-blur-xl flex items-center justify-between relative z-20">
+    <div className="h-16 px-3 sm:px-4 border-b border-slate-800/80 bg-background-surface/80 backdrop-blur-xl flex items-center justify-between relative z-20 safe-top">
       <div className="flex items-center space-x-3 min-w-0">
         <button
           onClick={() => setIsMobileSidebarOpen(true)}

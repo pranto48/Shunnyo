@@ -91,7 +91,7 @@ export default function ChatInput() {
   };
 
   return (
-    <div className="p-3 sm:p-4 bg-background-surface/90 border-t border-slate-800/80 backdrop-blur-xl relative z-20">
+    <div className="p-3 sm:p-4 bg-background-surface/90 border-t border-slate-800/80 backdrop-blur-xl relative z-20 safe-bottom">
       {/* Pending Attachment Preview Bar */}
       {pendingAttachment && (
         <div className="mb-2 flex items-center justify-between p-2 rounded-xl bg-slate-900/90 border border-brand-500/40 text-xs animate-slide-up">
