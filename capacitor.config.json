@@ -1,0 +1,13 @@
+{
+  "appId": "com.shunnyo.chat",
+  "appName": "Shunnyo",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "backgroundColor": "#0a0a0f",
+    "allowMixedContent": false
+  }
+}

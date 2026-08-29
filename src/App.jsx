@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { ChatProvider, useChat } from './context/ChatContext';
 import { CallProvider } from './context/CallContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import CallOverlay from './components/CallModal/CallOverlay';
@@ -13,6 +14,7 @@ import CreateGroupModal from './components/Group/CreateGroupModal';
 import GroupDetailsModal from './components/Group/GroupDetailsModal';
 import ErrorBoundary from './components/Shared/ErrorBoundary';
 import CallHistoryModal from './components/CallModal/CallHistoryModal';
+import AuthGate from './components/Auth/AuthGate';
 
 function MainAppLayout() {
   const { 
@@ -105,11 +107,39 @@ function MainAppLayout() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ChatProvider>
-        <CallProvider>
-          <MainAppLayout />
-        </CallProvider>
-      </ChatProvider>
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
     </ErrorBoundary>
+  );
+}
+
+function AppRouter() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Splash/Loading screen while validating token
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background-deep flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-14 h-14 rounded-3xl bg-gradient-to-br from-brand-600 to-indigo-600 flex items-center justify-center shadow-glow-brand animate-pulse">
+            <span className="text-white font-bold text-xl">শূ</span>
+          </div>
+          <p className="text-slate-400 text-sm animate-pulse">লোড হচ্ছে...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthGate />;
+  }
+
+  return (
+    <ChatProvider>
+      <CallProvider>
+        <MainAppLayout />
+      </CallProvider>
+    </ChatProvider>
   );
 }
