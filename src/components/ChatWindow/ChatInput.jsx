@@ -3,6 +3,7 @@ import { useChat } from '../../context/ChatContext';
 import { useCall } from '../../context/CallContext';
 import AttachmentModal from './AttachmentModal';
 import VoiceRecorderBar from './VoiceRecorderBar';
+import EmojiPicker from './EmojiPicker';
 import { audioRecorderEngine } from '../../utils/audioRecorder';
 import { 
   Paperclip, 
@@ -113,33 +114,12 @@ export default function ChatInput() {
         </div>
       )}
 
-      {/* Emoji Picker Popover */}
+      {/* Full Feature Emoji Picker Popover */}
       {showEmojiPicker && (
-        <>
-          <div
-            className="fixed inset-0 z-30"
-            onClick={() => setShowEmojiPicker(false)}
-          />
-          <div className="absolute bottom-20 left-4 sm:left-14 w-68 rounded-2xl glass-dropdown p-3 shadow-2xl z-40 border border-slate-700/80 animate-scale-in">
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs font-semibold text-slate-300">
-              <span>Quick Reactions</span>
-              <button onClick={() => setShowEmojiPicker(false)} className="text-slate-500 hover:text-slate-300">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-4 gap-1.5 text-xl">
-              {popularEmojis.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => handleSelectEmoji(emoji)}
-                  className="p-2 rounded-xl hover:bg-white/10 hover:scale-125 transition-all text-center"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
+        <EmojiPicker
+          onSelectEmoji={handleSelectEmoji}
+          onClose={() => setShowEmojiPicker(false)}
+        />
       )}
 
       {/* Attachment Modal */}

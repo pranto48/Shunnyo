@@ -14,24 +14,28 @@ import {
   MapPin, 
   Navigation, 
   Radio, 
-  Compass 
+  Compass,
+  Plus
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 import VoiceMessagePlayer from './VoiceMessagePlayer';
+import EmojiPicker from './EmojiPicker';
 
 export default function MessageBubble({ message, isGroup = false }) {
   const { currentUser, addReaction, deleteMessage } = useChat();
   const isSentByMe = message.senderId === currentUser.id;
 
   const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [showFullEmojiReactionPicker, setShowFullEmojiReactionPicker] = useState(false);
   const [isMediaZoomed, setIsMediaZoomed] = useState(false);
 
-  const availableReactions = ['❤️', '👍', '🔥', '😂', '😮', '🚀'];
+  const availableReactions = ['❤️', '👍', '🔥', '😂', '😮', '🚀', '🎉', '💯'];
 
   const handleReact = (emoji) => {
     sounds.playClick();
     addReaction(message.id, emoji);
     setShowReactionPicker(false);
+    setShowFullEmojiReactionPicker(false);
   };
 
   const formatFileSize = (bytes) => {
@@ -42,6 +46,16 @@ export default function MessageBubble({ message, isGroup = false }) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
+  // Detect if message is solely 1 to 3 emojis
+  const isOnlyEmojiMessage = (text) => {
+    if (!text || typeof text !== 'string') return false;
+    const trimmed = text.trim();
+    if (trimmed.length > 14) return false;
+    const emojiRegex = /^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\s)+$/u;
+    return emojiRegex.test(trimmed);
+  };
+
+  const isSoloEmoji = isOnlyEmojiMessage(message.content) && !message.attachment && !message.audioDuration;
   const attachment = message.attachment;
   const isAudio = attachment?.type === 'audio' || message.audioDuration;
 
@@ -65,7 +79,7 @@ export default function MessageBubble({ message, isGroup = false }) {
             isSentByMe ? 'right-0' : 'left-0'
           }`}
         >
-          {/* Reaction Picker */}
+          {/* Reaction Picker Button */}
           <div className="relative">
             <button
               onClick={() => setShowReactionPicker(!showReactionPicker)}
@@ -91,6 +105,16 @@ export default function MessageBubble({ message, isGroup = false }) {
                       {emoji}
                     </button>
                   ))}
+                  <button
+                    onClick={() => {
+                      setShowReactionPicker(false);
+                      setShowFullEmojiReactionPicker(true);
+                    }}
+                    className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xs"
+                    title="More Emojis"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </>
             )}
@@ -106,10 +130,20 @@ export default function MessageBubble({ message, isGroup = false }) {
           </button>
         </div>
 
+        {/* Full Emoji Picker Popover for Reactions */}
+        {showFullEmojiReactionPicker && (
+          <EmojiPicker
+            onSelectEmoji={handleReact}
+            onClose={() => setShowFullEmojiReactionPicker(false)}
+          />
+        )}
+
         {/* Message Bubble Container */}
         <div
           className={`px-4 py-2.5 rounded-2xl relative shadow-md transition-all ${
-            isSentByMe
+            isSoloEmoji
+              ? 'bg-transparent shadow-none px-1 py-1'
+              : isSentByMe
               ? 'bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 text-white rounded-br-sm shadow-glow-brand'
               : 'bg-background-card/90 text-slate-100 rounded-bl-sm border border-slate-700/60 backdrop-blur-md'
           }`}
@@ -259,33 +293,41 @@ export default function MessageBubble({ message, isGroup = false }) {
             />
           )}
 
-          {/* Text Content */}
+          {/* 6. Text Content or Solo Large Emojis */}
           {message.content && (
-            <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap select-text break-words">
+            <p
+              className={`leading-relaxed whitespace-pre-wrap select-text break-words ${
+                isSoloEmoji
+                  ? 'text-4xl sm:text-5xl py-1 text-center select-none hover:scale-110 transition-transform cursor-default'
+                  : 'text-xs sm:text-sm'
+              }`}
+            >
               {message.content}
             </p>
           )}
 
           {/* Metadata & Status Footer */}
-          <div
-            className={`flex items-center justify-end space-x-1 mt-1 text-[10px] select-none ${
-              isSentByMe ? 'text-brand-100/70' : 'text-slate-400'
-            }`}
-          >
-            <span>{message.timestamp}</span>
+          {!isSoloEmoji && (
+            <div
+              className={`flex items-center justify-end space-x-1 mt-1 text-[10px] select-none ${
+                isSentByMe ? 'text-brand-100/70' : 'text-slate-400'
+              }`}
+            >
+              <span>{message.timestamp}</span>
 
-            {isSentByMe && (
-              <span className="ml-0.5">
-                {message.status === 'read' ? (
-                  <CheckCheck className="w-3.5 h-3.5 text-cyan-300" />
-                ) : message.status === 'delivered' ? (
-                  <CheckCheck className="w-3.5 h-3.5 opacity-60" />
-                ) : (
-                  <Check className="w-3.5 h-3.5 opacity-60" />
-                )}
-              </span>
-            )}
-          </div>
+              {isSentByMe && (
+                <span className="ml-0.5">
+                  {message.status === 'read' ? (
+                    <CheckCheck className="w-3.5 h-3.5 text-cyan-300" />
+                  ) : message.status === 'delivered' ? (
+                    <CheckCheck className="w-3.5 h-3.5 opacity-60" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5 opacity-60" />
+                  )}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
