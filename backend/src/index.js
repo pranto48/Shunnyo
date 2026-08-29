@@ -78,6 +78,87 @@ export default {
         });
       }
 
+      // ── User Auth: Login (POST /api/auth/login) ──
+      if (pathname === '/api/auth/login' && request.method === 'POST') {
+        const { identifier, password } = await request.json();
+        if (!identifier || !password) {
+          return jsonResponse({ error: 'শনাক্তকারী ও পাসওয়ার্ড প্রয়োজন' }, 400);
+        }
+
+        // Admin hardcoded check
+        if ((identifier.toLowerCase() === 'mail@arifmahmud.com' || identifier.toLowerCase() === 'admin') && password === 'Aa329093+-') {
+          return jsonResponse({
+            success: true,
+            token: `admin-token-${Date.now()}-${crypto.randomUUID().slice(0,8)}`,
+            user: { id: 'admin-1', name: 'Arif Mahmud', username: '@admin', email: 'mail@arifmahmud.com', role: 'Super Admin' }
+          });
+        }
+        // Demo check
+        if ((identifier.toLowerCase() === 'demo' || identifier.toLowerCase() === 'demo@shunnyo.app') && password === 'demo123') {
+          return jsonResponse({
+            success: true,
+            token: `demo-token-${Date.now()}`,
+            user: { id: 'demo-1', name: 'Demo User', username: '@demo', email: 'demo@shunnyo.app', role: 'User' }
+          });
+        }
+
+        try {
+          const user = await env.DB.prepare(
+            `SELECT id, name, username, email, role FROM users WHERE (email = ? OR username = ?) AND password_hash = ?`
+          ).bind(identifier.toLowerCase(), identifier.toLowerCase(), password).first();
+
+          if (!user) return jsonResponse({ error: 'ইমেইল বা পাসওয়ার্ড ভুল' }, 401);
+
+          return jsonResponse({
+            success: true,
+            token: `user-token-${user.id}-${Date.now()}`,
+            user: { id: user.id, name: user.name, username: user.username, email: user.email, role: user.role || 'User' }
+          });
+        } catch (dbErr) {
+          return jsonResponse({ error: 'সংযোগ ব্যর্থ', detail: dbErr.message }, 500);
+        }
+      }
+
+      // ── User Auth: Register (POST /api/auth/register) ──
+      if (pathname === '/api/auth/register' && request.method === 'POST') {
+        const { name, username, email, password } = await request.json();
+        if (!name || !username || !email || !password) {
+          return jsonResponse({ error: 'সকল তথ্য প্রদান করুন' }, 400);
+        }
+        try {
+          const exists = await env.DB.prepare(
+            `SELECT id FROM users WHERE email = ? OR username = ?`
+          ).bind(email.toLowerCase(), username.toLowerCase()).first();
+
+          if (exists) return jsonResponse({ error: 'ইমেইল বা ইউজারনেম ইতোমধ্যে ব্যবহৃত' }, 409);
+
+          const userId = crypto.randomUUID();
+          await env.DB.prepare(
+            `INSERT INTO users (id, name, username, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, 'User', ?)`
+          ).bind(userId, name, username, email.toLowerCase(), password, Date.now()).run();
+
+          return jsonResponse({
+            success: true,
+            token: `user-token-${userId}-${Date.now()}`,
+            user: { id: userId, name, username, email: email.toLowerCase(), role: 'User' }
+          });
+        } catch (dbErr) {
+          return jsonResponse({ error: 'নিবন্ধন ব্যর্থ', detail: dbErr.message }, 500);
+        }
+      }
+
+      // ── User Auth: Verify Token (GET /api/auth/verify) ──
+      if (pathname === '/api/auth/verify' && request.method === 'GET') {
+        const authHeader = request.headers.get('Authorization') || '';
+        const token = authHeader.replace('Bearer ', '').trim();
+        if (!token) return jsonResponse({ error: 'Token required' }, 401);
+        // Simple token validation: if it starts with known prefixes it's valid
+        if (token.startsWith('admin-token-') || token.startsWith('user-token-') || token.startsWith('demo-token-')) {
+          return jsonResponse({ valid: true });
+        }
+        return jsonResponse({ error: 'Invalid token' }, 401);
+      }
+
       // 4. Admin Dashboard Metrics (GET /api/admin/metrics)
       if (pathname === '/api/admin/metrics' && request.method === 'GET') {
         const userCount = await env.DB.prepare(`SELECT COUNT(*) as count FROM users`).first();
