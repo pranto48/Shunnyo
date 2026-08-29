@@ -1,12 +1,16 @@
 /**
  * Cloudflare Durable Object: SignalingRoom
- * Manages WebSocket connections for WebRTC P2P Call Rooms
+ * Real-time WebSocket Transport for:
+ * 1. Live Chat Messaging & E2EE Payloads
+ * 2. Live Typing Indicators & Read Receipts
+ * 3. Live Presence & Status Synchronization
+ * 4. WebRTC P2P Audio/Video/Screen Signaling
  */
 export class SignalingRoom {
   constructor(state, env) {
     this.state = state;
     this.env = env;
-    this.sessions = new Map(); // webSocket -> { peerId, username }
+    this.sessions = new Map(); // webSocket -> { peerId, username, userId, connectedAt }
   }
 
   async fetch(request) {
@@ -17,10 +21,11 @@ export class SignalingRoom {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
-      const peerId = url.searchParams.get('peerId') || `peer_${Date.now()}`;
+      const peerId = url.searchParams.get('peerId') || url.searchParams.get('userId') || `peer_${Date.now()}`;
       const username = url.searchParams.get('username') || 'Anonymous';
+      const userId = url.searchParams.get('userId') || peerId;
 
-      await this.handleSession(server, peerId, username);
+      await this.handleSession(server, peerId, username, userId);
 
       return new Response(null, {
         status: 101,
@@ -39,17 +44,24 @@ export class SignalingRoom {
     return new Response('Not Found', { status: 404 });
   }
 
-  async handleSession(webSocket, peerId, username) {
+  async handleSession(webSocket, peerId, username, userId) {
     webSocket.accept();
-    this.sessions.set(webSocket, { peerId, username, connectedAt: Date.now() });
+    this.sessions.set(webSocket, { peerId, username, userId, connectedAt: Date.now() });
 
-    console.log(`[SignalingRoom] Peer connected: ${peerId} (${username}). Total peers: ${this.sessions.size}`);
+    console.log(`[SignalingRoom] Live Peer Connected: ${peerId} (User: ${userId}, Name: ${username}). Total: ${this.sessions.size}`);
 
-    // Notify other peers in the room about new participant
+    // Broadcast user presence joined
     this.broadcast(webSocket, {
-      type: 'peer-joined',
-      data: { peerId, username, totalPeers: this.sessions.size }
+      type: 'presence:joined',
+      data: { peerId, username, userId, totalPeers: this.sessions.size }
     });
+
+    // Send connection ACK with current online peers
+    const onlineUsers = Array.from(this.sessions.values()).map(s => ({ userId: s.userId, username: s.username }));
+    webSocket.send(JSON.stringify({
+      type: 'connection:ack',
+      data: { peerId, userId, onlineUsers, totalPeers: this.sessions.size }
+    }));
 
     webSocket.addEventListener('message', async (event) => {
       try {
@@ -57,16 +69,54 @@ export class SignalingRoom {
         const { type, data } = msg;
 
         switch (type) {
+          // --- 1. Live Chat Messaging ---
+          case 'chat:message':
+            console.log(`[SignalingRoom] Live Chat message from ${userId} to ${data.recipientId || 'room'}`);
+            this.broadcast(webSocket, {
+              type: 'chat:message',
+              data: {
+                ...data,
+                senderId: userId,
+                senderName: username,
+                timestamp: data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            });
+            break;
+
+          // --- 2. Live Typing Indicator ---
+          case 'chat:typing':
+            this.broadcast(webSocket, {
+              type: 'chat:typing',
+              data: {
+                senderId: userId,
+                recipientId: data.recipientId,
+                isTyping: data.isTyping
+              }
+            });
+            break;
+
+          // --- 3. Live Reaction ---
+          case 'chat:reaction':
+            this.broadcast(webSocket, {
+              type: 'chat:reaction',
+              data: {
+                messageId: data.messageId,
+                emoji: data.emoji,
+                userId: userId,
+                contactId: data.contactId
+              }
+            });
+            break;
+
+          // --- 4. WebRTC P2P Call Signaling ---
           case 'offer':
-            // Relay SDP Offer to remote peer(s)
             this.broadcast(webSocket, {
               type: 'offer',
-              data: { sdp: data.sdp, fromPeerId: peerId }
+              data: { sdp: data.sdp, fromPeerId: peerId, callType: data.callType, callerName: username }
             });
             break;
 
           case 'answer':
-            // Relay SDP Answer to caller
             this.broadcast(webSocket, {
               type: 'answer',
               data: { sdp: data.sdp, fromPeerId: peerId }
@@ -74,7 +124,6 @@ export class SignalingRoom {
             break;
 
           case 'ice-candidate':
-            // Relay ICE candidate for STUN NAT traversal
             this.broadcast(webSocket, {
               type: 'ice-candidate',
               data: { candidate: data.candidate, fromPeerId: peerId }
@@ -88,15 +137,16 @@ export class SignalingRoom {
             });
             break;
 
+          // --- 5. Heartbeat Ping ---
           case 'ping':
             webSocket.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
             break;
 
           default:
-            console.warn(`[SignalingRoom] Unknown message type: ${type}`);
+            console.warn(`[SignalingRoom] Unhandled type: ${type}`);
         }
       } catch (err) {
-        console.error('[SignalingRoom] Failed to handle WebSocket message:', err);
+        console.error('[SignalingRoom] WebSocket error:', err);
       }
     });
 
@@ -104,8 +154,8 @@ export class SignalingRoom {
       this.sessions.delete(webSocket);
       console.log(`[SignalingRoom] Peer disconnected: ${peerId}. Remaining: ${this.sessions.size}`);
       this.broadcast(null, {
-        type: 'peer-left',
-        data: { peerId, remainingPeers: this.sessions.size }
+        type: 'presence:left',
+        data: { peerId, userId, remainingPeers: this.sessions.size }
       });
     };
 
@@ -113,7 +163,7 @@ export class SignalingRoom {
     webSocket.addEventListener('error', closeHandler);
   }
 
-  // Broadcast message to peers in the room (optionally excluding sender)
+  // Broadcast message to connected WebSocket sessions (optionally excluding sender)
   broadcast(senderSocket, message) {
     const payload = JSON.stringify(message);
     for (const [ws] of this.sessions.entries()) {

@@ -11,16 +11,25 @@ import {
   Info, 
   Bell, 
   Trash2, 
-  Lock 
+  Lock,
+  Radio
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
 export default function ChatHeader() {
-  const { activeContact, setIsMobileSidebarOpen, setShowSecurityModal } = useChat();
+  const { 
+    activeContact, 
+    setIsMobileSidebarOpen, 
+    setShowSecurityModal,
+    isLiveConnected,
+    typingUsers
+  } = useChat();
   const { startCall, callState } = useCall();
   const [showMenu, setShowMenu] = useState(false);
 
   if (!activeContact) return null;
+
+  const isContactTyping = activeContact.isTyping || (typingUsers && typingUsers[activeContact.id]);
 
   const handleAudioCall = () => {
     sounds.playClick();
@@ -70,12 +79,20 @@ export default function ChatHeader() {
                 </button>
               )}
             </h3>
+
+            {/* Live WebSocket Connection Pill */}
+            {isLiveConnected && (
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-medium animate-fade-in">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Live WS</span>
+              </span>
+            )}
           </div>
 
           <p className="text-xs text-slate-400 truncate flex items-center gap-1.5 font-medium">
-            {activeContact.isTyping ? (
+            {isContactTyping ? (
               <span className="text-brand-400 flex items-center gap-1 font-semibold animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce" />
                 টাইপ করছেন...
               </span>
             ) : activeContact.isGroup ? (

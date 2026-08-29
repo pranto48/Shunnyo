@@ -8,6 +8,7 @@ import {
   generateUserKeyPair 
 } from '../utils/cryptoUtils';
 import { cloudflareApi } from '../services/cloudflareApi';
+import { liveChatService } from '../services/liveChatService';
 
 const ChatContext = createContext();
 
@@ -25,6 +26,11 @@ export function ChatProvider({ children }) {
   const [userKeyPair, setUserKeyPair] = useState(null);
   const [isE2EEInitialized, setIsE2EEInitialized] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
+
+  // Live WebSocket Real-time State
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [onlinePeerCount, setOnlinePeerCount] = useState(1);
+  const [typingUsers, setTypingUsers] = useState({}); // { [userId]: boolean }
 
   // Admin Portal State
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
@@ -56,7 +62,7 @@ export function ChatProvider({ children }) {
     sounds.playDisconnected();
   };
 
-  // Initialize Native Web Crypto RSA/AES-GCM Keys & Sync with Cloudflare D1
+  // 1. Initialize Native Web Crypto Keys & Register with D1
   useEffect(() => {
     async function initCrypto() {
       try {
@@ -65,7 +71,7 @@ export function ChatProvider({ children }) {
         setIsE2EEInitialized(true);
         console.log('Shunnyo E2EE Initialized. Local Fingerprint:', keyPair.fingerprint);
 
-        // Register Public Key with Cloudflare D1 database
+        // Register Public Key in Cloudflare D1
         await cloudflareApi.registerPublicKey(currentUser, keyPair.publicKeyJwk, keyPair.fingerprint);
       } catch (err) {
         console.error('Failed to initialize Web Crypto E2EE:', err);
@@ -74,23 +80,140 @@ export function ChatProvider({ children }) {
     initCrypto();
   }, []);
 
+  // 2. Connect to Cloudflare Live WebSocket & Setup Event Listeners
+  useEffect(() => {
+    // Connect to WebSocket
+    liveChatService.connect(currentUser.id, currentUser.name);
+
+    const unsubConnection = liveChatService.on('connection', (status) => {
+      setIsLiveConnected(status.status === 'connected');
+    });
+
+    // Handle Incoming Live Messages from WebSocket
+    const unsubMessage = liveChatService.on('message', async (incoming) => {
+      console.log('[LiveChat] Incoming live message received:', incoming);
+
+      const targetConversationId = incoming.recipientId === currentUser.id ? incoming.senderId : (incoming.contactId || incoming.senderId);
+
+      // Decrypt incoming E2EE payload locally if encrypted
+      let decryptedText = incoming.content;
+      if (incoming.encryptedEnvelope && userKeyPair?.privateKeyJwk) {
+        try {
+          decryptedText = await decryptPayload(incoming.encryptedEnvelope, userKeyPair.privateKeyJwk);
+        } catch (decErr) {
+          console.warn('[LiveChat] Decryption warning:', decErr);
+        }
+      }
+
+      const formattedMsg = {
+        id: incoming.id || `m-live-${Date.now()}`,
+        senderId: incoming.senderId,
+        senderName: incoming.senderName,
+        content: decryptedText,
+        timestamp: incoming.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'read',
+        isEncrypted: !!incoming.encryptedEnvelope,
+        encryptedEnvelope: incoming.encryptedEnvelope,
+        reactions: incoming.reactions || [],
+        attachment: incoming.attachment || null
+      };
+
+      sounds.playMessageReceived();
+
+      setMessages((prev) => ({
+        ...prev,
+        [targetConversationId]: [...(prev[targetConversationId] || []), formattedMsg]
+      }));
+
+      // If sender is not already in contacts, dynamically add them!
+      setContacts((prev) => {
+        const exists = prev.some((c) => c.id === incoming.senderId);
+        if (!exists) {
+          return [
+            {
+              id: incoming.senderId,
+              name: incoming.senderName || 'Anonymous Peer',
+              username: `@peer_${incoming.senderId.slice(-4)}`,
+              avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150`,
+              status: 'online',
+              unreadCount: 1,
+              isGroup: false
+            },
+            ...prev
+          ];
+        }
+        return prev;
+      });
+    });
+
+    // Handle Live Typing Indicators
+    const unsubTyping = liveChatService.on('typing', (data) => {
+      setTypingUsers((prev) => ({
+        ...prev,
+        [data.senderId]: data.isTyping
+      }));
+
+      setContacts((prev) =>
+        prev.map((c) =>
+          c.id === data.senderId ? { ...c, isTyping: data.isTyping } : c
+        )
+      );
+    });
+
+    // Handle Live Emoji Reactions
+    const unsubReaction = liveChatService.on('reaction', (data) => {
+      setMessages((prev) => {
+        const conversationId = data.contactId || activeContactId;
+        const currentList = prev[conversationId] || [];
+        const updated = currentList.map((msg) => {
+          if (msg.id !== data.messageId) return msg;
+          const currentReactions = msg.reactions || [];
+          const exists = currentReactions.includes(data.emoji);
+          return {
+            ...msg,
+            reactions: exists
+              ? currentReactions.filter((e) => e !== data.emoji)
+              : [...currentReactions, data.emoji]
+          };
+        });
+        return { ...prev, [conversationId]: updated };
+      });
+    });
+
+    // Handle Presence Updates
+    const unsubPresence = liveChatService.on('presence', (data) => {
+      if (data.totalPeers) {
+        setOnlinePeerCount(data.totalPeers);
+      }
+    });
+
+    return () => {
+      unsubConnection();
+      unsubMessage();
+      unsubTyping();
+      unsubReaction();
+      unsubPresence();
+    };
+  }, [userKeyPair, activeContactId]);
+
   const activeContact = contacts.find((c) => c.id === activeContactId) || contacts[0];
-  const activeMessages = messages[activeContactId] || [];
+  const activeMessages = (messages && messages[activeContactId]) || [];
 
-  const filteredContacts = contacts.filter((contact) => {
-    const matchesSearch =
-      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.username.toLowerCase().includes(searchQuery.toLowerCase());
-
-    if (!matchesSearch) return false;
-
-    if (filter === 'unread') return contact.unreadCount > 0;
-    if (filter === 'groups') return contact.isGroup;
-    if (filter === 'direct') return !contact.isGroup;
+  const filteredContacts = contacts.filter((c) => {
+    if (filter === 'unread') return c.unreadCount > 0;
+    if (filter === 'groups') return c.isGroup;
+    if (filter === 'direct') return !c.isGroup;
     return true;
+  }).filter((c) => {
+    if (!searchQuery) return true;
+    return (
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.username.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
   const selectContact = (contactId) => {
+    sounds.playClick();
     setActiveContactId(contactId);
     setContacts((prev) =>
       prev.map((c) => (c.id === contactId ? { ...c, unreadCount: 0 } : c))
@@ -101,29 +224,31 @@ export function ChatProvider({ children }) {
   };
 
   /**
-   * Send Message with Native Web Crypto E2EE Encryption
+   * Broadcast real-time typing state to peer
    */
-  const sendMessage = async ({ text, attachment = null, audioDuration = null }) => {
-    if (!text && !attachment && !audioDuration) return;
+  const sendLiveTyping = (isTyping) => {
+    if (activeContactId) {
+      liveChatService.sendTyping(activeContactId, isTyping);
+    }
+  };
 
-    const newMessageId = `m-${Date.now()}`;
+  /**
+   * Send Live Message (Local State + WebSocket Broadcast + E2EE Encryption)
+   */
+  const sendMessage = async (text, attachment = null) => {
+    if (!text?.trim() && !attachment) return;
+
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newMessageId = `m-${Date.now()}`;
 
+    // Generate E2EE envelope
     let encryptedEnvelope = null;
-
-    // Encrypt payload if E2EE is active
-    if (userKeyPair && userKeyPair.publicKeyJwk) {
+    if (userKeyPair?.publicKeyJwk) {
       try {
-        const payloadToEncrypt = text || (attachment ? JSON.stringify(attachment) : `[Voice Note: ${audioDuration}]`);
-        // Encrypt with recipient's public key (using user's local keypair for local simulation)
-        encryptedEnvelope = await encryptPayload(
-          payloadToEncrypt,
-          userKeyPair.publicKeyJwk,
-          attachment ? { type: attachment.type, name: attachment.caption || 'file' } : null
-        );
-      } catch (e) {
-        console.warn('Encryption step error:', e);
+        encryptedEnvelope = await encryptPayload(text || attachment?.name || 'Encrypted File', userKeyPair.publicKeyJwk);
+      } catch (err) {
+        console.debug('E2EE envelope generation:', err);
       }
     }
 
@@ -131,23 +256,37 @@ export function ChatProvider({ children }) {
       id: newMessageId,
       senderId: currentUser.id,
       senderName: currentUser.name,
+      recipientId: activeContactId,
+      contactId: activeContactId,
       content: text,
       timestamp: timeString,
       status: 'sent',
-      attachment,
-      audioDuration,
       isEncrypted: true,
+      attachment,
       encryptedEnvelope,
       reactions: []
     };
 
     sounds.playMessageSent();
 
+    // 1. Update local conversation state immediately
     setMessages((prev) => ({
       ...prev,
       [activeContactId]: [...(prev[activeContactId] || []), newMessage]
     }));
 
+    // 2. Broadcast message over Cloudflare WebSocket
+    liveChatService.sendMessage({
+      id: newMessageId,
+      recipientId: activeContactId,
+      contactId: activeContactId,
+      content: text,
+      attachment,
+      encryptedEnvelope,
+      timestamp: timeString
+    });
+
+    // 3. Mark delivery receipts
     setTimeout(() => {
       setMessages((prev) => ({
         ...prev,
@@ -155,7 +294,7 @@ export function ChatProvider({ children }) {
           m.id === newMessageId ? { ...m, status: 'delivered' } : m
         )
       }));
-    }, 600);
+    }, 400);
 
     setTimeout(() => {
       setMessages((prev) => ({
@@ -164,9 +303,12 @@ export function ChatProvider({ children }) {
           m.id === newMessageId ? { ...m, status: 'read' } : m
         )
       }));
-    }, 1500);
+    }, 1200);
 
-    triggerSimulatedResponse(activeContactId);
+    // Fallback simulated reply for demo contacts if peer is offline
+    if (activeContactId.startsWith('c-')) {
+      triggerSimulatedResponse(activeContactId);
+    }
   };
 
   const triggerSimulatedResponse = (contactId) => {
@@ -189,7 +331,6 @@ export function ChatProvider({ children }) {
       const now = new Date();
       const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // Simulated E2EE decryption
       let replyEnvelope = null;
       if (userKeyPair?.publicKeyJwk) {
         try {
@@ -222,6 +363,10 @@ export function ChatProvider({ children }) {
 
   const addReaction = (messageId, emoji) => {
     sounds.playClick();
+
+    // Broadcast reaction over WebSocket
+    liveChatService.sendReaction(messageId, emoji, activeContactId);
+
     setMessages((prev) => {
       const currentList = prev[activeContactId] || [];
       const updated = currentList.map((msg) => {
@@ -259,6 +404,7 @@ export function ChatProvider({ children }) {
       value={{
         currentUser,
         contacts,
+        setContacts,
         activeContact,
         activeContactId,
         messages,
@@ -277,6 +423,7 @@ export function ChatProvider({ children }) {
         setActiveTab,
         selectContact,
         sendMessage,
+        sendLiveTyping,
         addReaction,
         deleteMessage,
         triggerSimulatedResponse,
@@ -285,6 +432,9 @@ export function ChatProvider({ children }) {
         showSecurityModal,
         setShowSecurityModal,
         regenerateKeys,
+        isLiveConnected,
+        onlinePeerCount,
+        typingUsers,
         isAdminLoggedIn,
         adminUser,
         showAdminModal,

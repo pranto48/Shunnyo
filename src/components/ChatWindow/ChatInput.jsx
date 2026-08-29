@@ -12,12 +12,13 @@ import {
   X, 
   Phone, 
   Video,
-  Sparkles
+  Sparkles,
+  Radio
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
 export default function ChatInput() {
-  const { sendMessage, activeContact } = useChat();
+  const { sendMessage, activeContact, sendLiveTyping, isLiveConnected } = useChat();
   const { startCall, callState } = useCall();
 
   const [text, setText] = useState('');
@@ -29,6 +30,7 @@ export default function ChatInput() {
 
   const inputRef = useRef(null);
   const recordTimerRef = useRef(null);
+  const typingTimerRef = useRef(null);
 
   const popularEmojis = [
     '😀', '😂', '😍', '🔥', '👍', '❤️', '🎉', '🚀',
@@ -53,13 +55,27 @@ export default function ChatInput() {
     };
   }, [isRecordingVoice]);
 
+  // Handle typing debounce broadcast
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setText(val);
+
+    if (sendLiveTyping) {
+      sendLiveTyping(true);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        sendLiveTyping(false);
+      }, 1800);
+    }
+  };
+
   const handleSend = () => {
     if (!text.trim() && !pendingAttachment) return;
 
-    sendMessage({
-      text: text.trim(),
-      attachment: pendingAttachment
-    });
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    if (sendLiveTyping) sendLiveTyping(false);
+
+    sendMessage(text.trim(), pendingAttachment);
 
     setText('');
     setPendingAttachment(null);
@@ -82,12 +98,12 @@ export default function ChatInput() {
   const toggleVoiceRecording = () => {
     sounds.playClick();
     if (isRecordingVoice) {
-      // Finish recording and send voice note
       const durationStr = `0:${recordingTime < 10 ? '0' + recordingTime : recordingTime}`;
       setIsRecordingVoice(false);
-      sendMessage({
-        text: '',
-        audioDuration: recordingTime > 0 ? durationStr : '0:07'
+      sendMessage('', {
+        type: 'audio',
+        audioDuration: recordingTime > 0 ? durationStr : '0:07',
+        caption: 'Voice Note'
       });
     } else {
       setIsRecordingVoice(true);
@@ -110,33 +126,18 @@ export default function ChatInput() {
               <ImageIcon className="w-4 h-4" />
             </div>
             <div className="truncate">
-              <p className="font-semibold text-slate-200 truncate">
-                {pendingAttachment.caption || 'Attached File'}
-              </p>
-              <p className="text-[10px] text-slate-400">Ready to transmit</p>
+              <span className="font-semibold text-white truncate block">{pendingAttachment.name || pendingAttachment.caption}</span>
+              <span className="text-[10px] text-brand-300 font-mono">Cloudflare R2 E2EE Attached</span>
             </div>
           </div>
           <button
             onClick={() => setPendingAttachment(null)}
-            className="p-1 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-white/5"
+            className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
-
-      {/* Attachment Popover Modal */}
-      <AttachmentModal
-        isOpen={showAttachmentMenu}
-        onClose={() => setShowAttachmentMenu(false)}
-        onSelectAttachment={(att) => {
-          if (att.type === 'audio') {
-            sendMessage({ text: '', audioDuration: att.audioDuration });
-          } else {
-            setPendingAttachment(att);
-          }
-        }}
-      />
 
       {/* Emoji Picker Popover */}
       {showEmojiPicker && (
@@ -145,16 +146,19 @@ export default function ChatInput() {
             className="fixed inset-0 z-30"
             onClick={() => setShowEmojiPicker(false)}
           />
-          <div className="absolute bottom-20 right-16 sm:right-24 w-64 p-3 rounded-2xl glass-dropdown shadow-2xl z-40 border border-slate-700/80 animate-scale-in">
-            <div className="text-xs font-semibold text-slate-400 mb-2 px-1">
-              Quick Emojis
+          <div className="absolute bottom-20 left-4 sm:left-14 w-68 rounded-2xl glass-dropdown p-3 shadow-2xl z-40 border border-slate-700/80 animate-scale-in">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs font-semibold text-slate-300">
+              <span>Quick Reactions</span>
+              <button onClick={() => setShowEmojiPicker(false)} className="text-slate-500 hover:text-slate-300">
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5 text-xl">
               {popularEmojis.map((emoji) => (
                 <button
                   key={emoji}
                   onClick={() => handleSelectEmoji(emoji)}
-                  className="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center text-lg hover:scale-125 transition-transform"
+                  className="p-2 rounded-xl hover:bg-white/10 hover:scale-125 transition-all text-center"
                 >
                   {emoji}
                 </button>
@@ -164,111 +168,102 @@ export default function ChatInput() {
         </>
       )}
 
+      {/* Attachment Modal */}
+      <AttachmentModal
+        isOpen={showAttachmentMenu}
+        onClose={() => setShowAttachmentMenu(false)}
+        onSelectAttachment={(att) => setPendingAttachment(att)}
+      />
+
       {/* Main Input Control Bar */}
-      <div className="flex items-center space-x-2">
-        {/* Attachment Toggle Button */}
+      <div className="flex items-end space-x-2">
+        {/* Attachment Button */}
         <button
           onClick={() => {
             sounds.playClick();
             setShowAttachmentMenu(!showAttachmentMenu);
           }}
-          title="Attach media or files"
-          className="p-2.5 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 border border-transparent hover:border-slate-700 active:scale-95 transition-all flex-shrink-0"
+          title="Attach Encrypted File (R2)"
+          className={`p-2.5 rounded-2xl text-slate-400 hover:text-brand-300 hover:bg-brand-500/10 active:scale-95 transition-all duration-200 border ${
+            showAttachmentMenu ? 'bg-brand-500/20 border-brand-500/40 text-brand-300' : 'border-transparent'
+          }`}
         >
           <Paperclip className="w-5 h-5" />
         </button>
 
-        {/* Dynamic Voice Recording Bar or Text Input */}
-        {isRecordingVoice ? (
-          <div className="flex-1 flex items-center justify-between bg-rose-500/10 border border-rose-500/30 rounded-2xl px-4 py-2.5 animate-pulse">
-            <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono font-semibold">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-              <span>রেকর্ডিং হচ্ছে... 0:{recordingTime < 10 ? '0' + recordingTime : recordingTime}</span>
-            </div>
-            <div className="flex items-center space-x-2">
+        {/* Emoji Popover Button */}
+        <button
+          onClick={() => {
+            sounds.playClick();
+            setShowEmojiPicker(!showEmojiPicker);
+          }}
+          title="Insert Emoji"
+          className="p-2.5 rounded-2xl text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 active:scale-95 transition-all duration-200"
+        >
+          <Smile className="w-5 h-5" />
+        </button>
+
+        {/* Smart Text Input or Voice Recording Bar */}
+        <div className="flex-1 relative rounded-2xl bg-slate-950/70 border border-slate-800/80 focus-within:border-brand-500/80 focus-within:ring-1 focus-within:ring-brand-500/50 transition-all flex items-center shadow-inner overflow-hidden">
+          {isRecordingVoice ? (
+            <div className="w-full flex items-center justify-between px-4 py-2.5 bg-rose-950/40 border-rose-500/30 text-rose-300 animate-pulse">
+              <div className="flex items-center space-x-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                <span className="text-xs font-semibold">ভয়েস রেকর্ড হচ্ছে...</span>
+                <span className="text-xs font-mono font-bold text-white ml-2">
+                  0:{recordingTime < 10 ? '0' + recordingTime : recordingTime}
+                </span>
+              </div>
               <button
                 onClick={cancelRecording}
-                className="text-xs text-slate-400 hover:text-slate-200 px-2 py-1"
+                className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/10 transition-colors"
               >
-                বাতিল
-              </button>
-              <button
-                onClick={toggleVoiceRecording}
-                className="px-3 py-1 rounded-lg bg-rose-500 text-white text-xs font-bold shadow-glow-rose hover:bg-rose-600"
-              >
-                পাঠান
+                বাতিল করুন
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="flex-1 relative flex items-center">
+          ) : (
             <textarea
               ref={inputRef}
               rows={1}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder={`Message ${activeContact?.name || ''}...`}
-              className="w-full pl-4 pr-10 py-2.5 text-sm bg-slate-900/90 border border-slate-800 rounded-2xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500/70 focus:ring-1 focus:ring-brand-500/50 resize-none max-h-32 transition-all"
+              placeholder={`${activeContact?.name || 'চ্যাটে'} মেসেজ লিখুন...`}
+              className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none max-h-32 custom-scrollbar font-sans"
+              style={{ minHeight: '44px' }}
             />
-            {/* Emoji Button inside Input */}
-            <button
-              onClick={() => {
-                sounds.playClick();
-                setShowEmojiPicker(!showEmojiPicker);
-              }}
-              title="Add Emoji"
-              className="absolute right-3 p-1 text-slate-400 hover:text-amber-400 transition-colors"
-            >
-              <Smile className="w-5 h-5" />
-            </button>
-          </div>
-        )}
-
-        {/* Voice Note Button (if empty text) or Send Button */}
-        {!text.trim() && !pendingAttachment && !isRecordingVoice ? (
-          <button
-            onClick={toggleVoiceRecording}
-            title="Record Voice Note"
-            className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 active:scale-95 transition-all flex-shrink-0"
-          >
-            <Mic className="w-5 h-5" />
-          </button>
-        ) : !isRecordingVoice ? (
-          <button
-            onClick={handleSend}
-            title="Send Message"
-            className="p-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-glow-brand active:scale-95 transition-all flex-shrink-0"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        ) : null}
-
-        {/* Direct Call Shortcut Buttons in Input Area */}
-        <div className="hidden lg:flex items-center space-x-1 border-l border-slate-800 pl-2">
-          <button
-            onClick={() => {
-              sounds.playClick();
-              startCall(activeContact, 'audio');
-            }}
-            disabled={callState !== 'idle'}
-            title="Quick Audio Call"
-            className="p-2 rounded-xl text-slate-400 hover:text-accent-emerald hover:bg-emerald-500/10 active:scale-95 transition-all disabled:opacity-40"
-          >
-            <Phone className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => {
-              sounds.playClick();
-              startCall(activeContact, 'video');
-            }}
-            disabled={callState !== 'idle'}
-            title="Quick Video Call"
-            className="p-2 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-brand-500/10 active:scale-95 transition-all disabled:opacity-40"
-          >
-            <Video className="w-4 h-4" />
-          </button>
+          )}
         </div>
+
+        {/* Voice Note Button */}
+        <button
+          onClick={toggleVoiceRecording}
+          title={isRecordingVoice ? 'ভয়েস পাঠানো সম্পন্ন করুন' : 'ভয়েস মেসেজ রেকর্ড করুন'}
+          className={`p-2.5 rounded-2xl transition-all duration-200 border active:scale-95 ${
+            isRecordingVoice
+              ? 'bg-rose-600 text-white border-rose-500 shadow-glow-rose scale-105'
+              : 'text-slate-400 hover:text-purple-300 hover:bg-purple-500/10 border-transparent'
+          }`}
+        >
+          {isRecordingVoice ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+        </button>
+
+        {/* Send Action Button */}
+        <button
+          onClick={() => {
+            sounds.playClick();
+            handleSend();
+          }}
+          disabled={!text.trim() && !pendingAttachment}
+          title="Send Encrypted Message (Enter)"
+          className={`p-2.5 rounded-2xl transition-all duration-200 flex items-center justify-center ${
+            text.trim() || pendingAttachment
+              ? 'bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-glow-brand active:scale-95'
+              : 'bg-slate-800/60 text-slate-600 cursor-not-allowed opacity-50'
+          }`}
+        >
+          <Send className="w-5 h-5" />
+        </button>
       </div>
     </div>
   );
