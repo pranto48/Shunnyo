@@ -21,6 +21,15 @@ export function CallProvider({ children }) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
 
+  // Call History
+  const [callHistory, setCallHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('shunnyo_call_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [showCallHistory, setShowCallHistory] = useState(false);
+
   // WebRTC MediaStreams
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
@@ -29,6 +38,50 @@ export function CallProvider({ children }) {
   const durationTimerRef = useRef(null);
   const simulationTimerRef = useRef(null);
   const speakingIntervalRef = useRef(null);
+  const callStartTimeRef = useRef(null);
+  const callTargetRef = useRef(null);
+  const callTypeRef = useRef('audio');
+  const callDirectionRef = useRef('outgoing'); // 'outgoing' | 'incoming'
+
+  // Save a call log entry
+  const saveCallLog = (status, durationSecs = 0, contactOverride = null) => {
+    const contact = contactOverride || callTargetRef.current;
+    if (!contact) return;
+    const entry = {
+      id: `call-${Date.now()}`,
+      contactId: contact.id,
+      contactName: contact.name,
+      contactAvatar: contact.avatar || '',
+      callType: callTypeRef.current,
+      direction: callDirectionRef.current,
+      status, // 'completed' | 'missed' | 'rejected' | 'cancelled'
+      duration: durationSecs,
+      timestamp: new Date().toISOString(),
+      isGroup: false
+    };
+    setCallHistory((prev) => {
+      const next = [entry, ...prev].slice(0, 100); // keep last 100
+      try { localStorage.setItem('shunnyo_call_history', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const missedCallCount = callHistory.filter(
+    (c) => c.status === 'missed' && !c.seen
+  ).length;
+
+  const clearMissedBadge = () => {
+    setCallHistory((prev) => {
+      const next = prev.map((c) => ({ ...c, seen: true }));
+      try { localStorage.setItem('shunnyo_call_history', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const clearCallHistory = () => {
+    setCallHistory([]);
+    try { localStorage.removeItem('shunnyo_call_history'); } catch {}
+  };
 
   // 1. Initialize WebRTC Media Handlers & WebSocket Call Signaling
   useEffect(() => {
@@ -161,6 +214,10 @@ export function CallProvider({ children }) {
     setIsGroupCall(false);
     setGroupCallParticipants([]);
     setCallTarget(contact);
+    callTargetRef.current = contact;
+    callTypeRef.current = type;
+    callDirectionRef.current = 'outgoing';
+    callStartTimeRef.current = Date.now();
     setCallType(type);
     setCallState('calling');
     setIsMuted(false);
@@ -192,6 +249,7 @@ export function CallProvider({ children }) {
       simulationTimerRef.current = setTimeout(() => {
         sounds.stopRingtone();
         setCallState('connected');
+        callStartTimeRef.current = Date.now();
         sounds.playCallConnected();
       }, 3200);
     }
@@ -272,6 +330,10 @@ export function CallProvider({ children }) {
   const receiveCall = (contact, type = 'audio') => {
     setIsGroupCall(false);
     setCallTarget(contact);
+    callTargetRef.current = contact;
+    callTypeRef.current = type;
+    callDirectionRef.current = 'incoming';
+    callStartTimeRef.current = null;
     setCallType(type);
     setCallState('incoming');
     setIsMuted(false);
@@ -286,6 +348,7 @@ export function CallProvider({ children }) {
    */
   const acceptCall = async () => {
     sounds.stopRingtone();
+    callStartTimeRef.current = Date.now();
     try {
       const stream = await webrtcService.getLocalMediaStream(callType);
       setLocalStream(stream);
@@ -307,6 +370,7 @@ export function CallProvider({ children }) {
    * Decline Incoming Call
    */
   const declineCall = () => {
+    saveCallLog('rejected', 0);
     liveChatService.sendPayload('hangup', { fromPeerId: currentUser.id });
     webrtcService.close();
     sounds.stopRingtone();
@@ -315,6 +379,7 @@ export function CallProvider({ children }) {
     setTimeout(() => {
       setCallState('idle');
       setCallTarget(null);
+      callTargetRef.current = null;
       setLocalStream(null);
       setRemoteStream(null);
     }, 1000);
@@ -325,6 +390,22 @@ export function CallProvider({ children }) {
    */
   const endCall = () => {
     if (simulationTimerRef.current) clearTimeout(simulationTimerRef.current);
+    // Save completed call log
+    const durationSecs = callStartTimeRef.current
+      ? Math.round((Date.now() - callStartTimeRef.current) / 1000)
+      : 0;
+    const wasConnected = callState === 'connected';
+    const wasCalling = callState === 'calling';
+    if (wasConnected) {
+      saveCallLog('completed', durationSecs);
+    } else if (wasCalling) {
+      saveCallLog('cancelled', 0);
+    } else if (callState === 'incoming') {
+      saveCallLog('missed', 0);
+    }
+    callStartTimeRef.current = null;
+    callTargetRef.current = null;
+
     if (isGroupCall && callTarget) {
       liveChatService.sendPayload('group_call:leave', { groupId: callTarget.id });
     } else {
@@ -416,6 +497,12 @@ export function CallProvider({ children }) {
         localStream,
         remoteStream,
         webrtcStatus,
+        callHistory,
+        missedCallCount,
+        showCallHistory,
+        setShowCallHistory,
+        clearMissedBadge,
+        clearCallHistory,
         startCall,
         startGroupAudioCall,
         joinGroupCall,

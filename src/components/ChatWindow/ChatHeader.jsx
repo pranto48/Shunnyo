@@ -12,7 +12,9 @@ import {
   Bell, 
   Trash2, 
   Lock,
-  Radio
+  Radio,
+  UserX,
+  UserCheck
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
@@ -23,12 +25,17 @@ export default function ChatHeader() {
     setShowSecurityModal,
     setShowGroupDetailsModal,
     isLiveConnected,
-    typingUsers
+    typingUsers,
+    blockUser,
+    unblockUser,
+    isBlocked
   } = useChat();
   const { startCall, startGroupAudioCall, activeGroupCalls, callState } = useCall();
   const [showMenu, setShowMenu] = useState(false);
 
   if (!activeContact) return null;
+
+  const contactIsBlocked = isBlocked(activeContact.id);
 
   const isContactTyping = activeContact.isTyping || (typingUsers && typingUsers[activeContact.id]);
 
@@ -174,7 +181,7 @@ export default function ChatHeader() {
                 className="fixed inset-0 z-30"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 top-12 w-52 rounded-2xl glass-dropdown p-1.5 shadow-2xl z-40 animate-scale-in text-xs">
+              <div className="absolute right-0 top-12 w-56 rounded-2xl glass-dropdown p-1.5 shadow-2xl z-40 animate-scale-in text-xs">
                 <button
                   onClick={handleOpenSecurity}
                   className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-slate-200 hover:bg-white/5 hover:text-white transition-all font-medium"
@@ -196,6 +203,25 @@ export default function ChatHeader() {
                   <Bell className="w-4 h-4 text-slate-400" />
                   <span>Mute Notifications</span>
                 </button>
+                {!activeContact.isGroup && (
+                  <>
+                    <div className="h-px bg-slate-800 my-1" />
+                    <button
+                      onClick={() => {
+                        contactIsBlocked ? unblockUser(activeContact.id) : blockUser(activeContact.id);
+                        setShowMenu(false);
+                      }}
+                      className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl transition-all ${
+                        contactIsBlocked
+                          ? 'text-emerald-400 hover:bg-emerald-500/10'
+                          : 'text-orange-400 hover:bg-orange-500/10'
+                      }`}
+                    >
+                      {contactIsBlocked ? <UserCheck className="w-4 h-4" /> : <UserX className="w-4 h-4" />}
+                      <span>{contactIsBlocked ? `${activeContact.name} কে আনব্লক করুন` : `${activeContact.name} কে ব্লক করুন`}</span>
+                    </button>
+                  </>
+                )}
                 <div className="h-px bg-slate-800 my-1" />
                 <button
                   onClick={() => setShowMenu(false)}

@@ -16,6 +16,7 @@ import AdminOverview from './AdminOverview';
 import AdminUsers from './AdminUsers';
 import AdminStorage from './AdminStorage';
 import AdminTelemetry from './AdminTelemetry';
+import AdminBackup from './AdminBackup';
 import { sounds } from '../../utils/soundEffects';
 
 export default function AdminPanel({ isOpen, onClose, adminUser, onLogout }) {
@@ -27,7 +28,8 @@ export default function AdminPanel({ isOpen, onClose, adminUser, onLogout }) {
     { id: 'overview', label: 'ড্যাশবোর্ড ওভারভিউ', icon: LayoutDashboard },
     { id: 'users', label: 'ইউজার ম্যানেজমেন্ট', icon: Users },
     { id: 'storage', label: 'R2 স্টোরেজ ভল্ট', icon: HardDrive },
-    { id: 'telemetry', label: 'WebRTC টেলিমেট্রি', icon: Activity }
+    { id: 'telemetry', label: 'WebRTC টেলিমেট্রি', icon: Activity },
+    { id: 'backup', label: 'ব্যাকআপ সিস্টেম', icon: Server }
   ];
 
   return (
@@ -115,6 +117,7 @@ export default function AdminPanel({ isOpen, onClose, adminUser, onLogout }) {
           {activeTab === 'users' && <AdminUsers />}
           {activeTab === 'storage' && <AdminStorage />}
           {activeTab === 'telemetry' && <AdminTelemetry />}
+          {activeTab === 'backup' && <AdminBackup adminUser={adminUser} />}
         </main>
       </div>
     </div>

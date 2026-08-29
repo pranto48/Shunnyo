@@ -56,6 +56,14 @@ export function ChatProvider({ children }) {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
+  // Block/Unblock User System
+  const [blockedUsers, setBlockedUsers] = useState(() => {
+    try {
+      const saved = localStorage.getItem('shunnyo_blocked_users');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+
   const openAdminPortal = () => {
     sounds.playClick();
     if (isAdminLoggedIn) {
@@ -79,6 +87,28 @@ export function ChatProvider({ children }) {
     setShowAdminPanel(false);
     sounds.playDisconnected();
   };
+
+  const blockUser = (userId) => {
+    sounds.playClick();
+    setBlockedUsers((prev) => {
+      const next = new Set(prev);
+      next.add(userId);
+      try { localStorage.setItem('shunnyo_blocked_users', JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
+
+  const unblockUser = (userId) => {
+    sounds.playClick();
+    setBlockedUsers((prev) => {
+      const next = new Set(prev);
+      next.delete(userId);
+      try { localStorage.setItem('shunnyo_blocked_users', JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
+
+  const isBlocked = (userId) => blockedUsers.has(userId);
 
   // 1. Initialize Native Web Crypto Keys & Register with D1
   useEffect(() => {
@@ -654,7 +684,11 @@ export function ChatProvider({ children }) {
         setShowAdminPanel,
         openAdminPortal,
         handleAdminLogin,
-        handleAdminLogout
+        handleAdminLogout,
+        blockedUsers,
+        blockUser,
+        unblockUser,
+        isBlocked
       }}
     >
       {children}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useChat } from '../../context/ChatContext';
+import { useCall } from '../../context/CallContext';
 import Avatar from '../Shared/Avatar';
 import { 
   MessageSquarePlus, 
@@ -12,7 +13,8 @@ import {
   User, 
   Plus, 
   Check, 
-  Edit3
+  Edit3,
+  Phone
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
@@ -25,6 +27,7 @@ export default function SidebarHeader() {
     setShowCreateGroupModal, 
     updateUserProfile 
   } = useChat();
+  const { missedCallCount, setShowCallHistory } = useCall();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
   const statusOptions = [
@@ -94,6 +97,23 @@ export default function SidebarHeader() {
             className="p-2 rounded-xl text-cyan-400 hover:text-white hover:bg-cyan-500/20 active:scale-95 transition-all duration-200"
           >
             <Users className="w-5 h-5" />
+          </button>
+
+          {/* Call History Button */}
+          <button
+            title="কল হিস্ট্রি দেখুন (Call History)"
+            onClick={() => {
+              sounds.playClick();
+              setShowCallHistory(true);
+            }}
+            className="p-2 rounded-xl text-emerald-400 hover:text-white hover:bg-emerald-500/20 active:scale-95 transition-all duration-200 relative"
+          >
+            <Phone className="w-5 h-5" />
+            {missedCallCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border border-slate-900">
+                {missedCallCount > 9 ? '9+' : missedCallCount}
+              </span>
+            )}
           </button>
 
           {/* Admin Portal Button */}

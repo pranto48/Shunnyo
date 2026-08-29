@@ -15,7 +15,8 @@ import {
   Reply,
   Type,
   Palette,
-  Check
+  Check,
+  UserX
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
@@ -26,7 +27,9 @@ export default function ChatInput() {
     sendLiveTyping, 
     broadcastLiveText,
     replyingToMessage, 
-    setReplyingToMessage 
+    setReplyingToMessage,
+    isBlocked,
+    unblockUser
   } = useChat();
   const { startCall, callState } = useCall();
 
@@ -131,6 +134,24 @@ export default function ChatInput() {
 
   return (
     <div className="p-3 sm:p-4 bg-background-surface/90 border-t border-slate-800/80 backdrop-blur-xl relative z-20 safe-bottom">
+      {/* BLOCKED USER BANNER */}
+      {activeContact && isBlocked(activeContact.id) && (
+        <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-orange-950/60 border border-orange-500/30">
+          <div className="flex items-center space-x-2.5">
+            <UserX className="w-5 h-5 text-orange-400 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-orange-300">আপনি {activeContact.name} কে ব্লক করেছেন</p>
+              <p className="text-[10px] text-orange-400/70">মেসেজ পাঠানো বা পাওয়া যাবে না</p>
+            </div>
+          </div>
+          <button
+            onClick={() => unblockUser(activeContact.id)}
+            className="px-3 py-1.5 rounded-xl bg-orange-500/20 hover:bg-orange-500/40 text-orange-300 hover:text-white text-xs font-semibold border border-orange-500/30 transition-all active:scale-95"
+          >
+            আনব্লক করুন
+          </button>
+        </div>
+      )}
       {/* Replying To Message Banner */}
       {replyingToMessage && (
         <div className="mb-2 flex items-center justify-between p-2.5 rounded-xl bg-slate-900/95 border-l-4 border-l-brand-500 border border-slate-800 text-xs animate-slide-up shadow-lg">

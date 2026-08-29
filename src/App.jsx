@@ -12,6 +12,7 @@ import UserProfileModal from './components/Profile/UserProfileModal';
 import CreateGroupModal from './components/Group/CreateGroupModal';
 import GroupDetailsModal from './components/Group/GroupDetailsModal';
 import ErrorBoundary from './components/Shared/ErrorBoundary';
+import CallHistoryModal from './components/CallModal/CallHistoryModal';
 
 function MainAppLayout() {
   const { 
@@ -55,6 +56,9 @@ function MainAppLayout() {
 
       {/* Active Audio / Video Call Modal Overlay */}
       <CallOverlay />
+
+      {/* Call History Log Modal */}
+      <CallHistoryModal />
 
       {/* PWA Install Banner */}
       <InstallPrompt />
