@@ -1,12 +1,14 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   Image as ImageIcon, 
+  Video, 
   FileText, 
   Music, 
-  Camera, 
-  X,
-  UploadCloud,
-  Loader2
+  UploadCloud, 
+  X, 
+  Loader2,
+  Sparkles,
+  Film
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 import { cloudflareApi } from '../../services/cloudflareApi';
@@ -15,160 +17,171 @@ import { useChat } from '../../context/ChatContext';
 export default function AttachmentModal({ isOpen, onClose, onSelectAttachment }) {
   const { currentUser } = useChat();
   const fileInputRef = useRef(null);
-  const [isUploading, setIsUploading] = React.useState(false);
+  const [fileFilter, setFileFilter] = useState('*/*');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   if (!isOpen) return null;
 
-  const handleDeviceFileUpload = async (e) => {
+  const triggerPicker = (acceptTypes) => {
+    setFileFilter(acceptTypes);
+    setTimeout(() => {
+      fileInputRef.current?.click();
+    }, 50);
+  };
+
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
       setIsUploading(true);
+      setUploadProgress(20);
       sounds.playClick();
 
-      // Read file data
+      // Read file binary
       const arrayBuffer = await file.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: file.type });
+      const blob = new Blob([arrayBuffer], { type: file.type || 'application/octet-stream' });
+      setUploadProgress(50);
 
-      // Upload to Cloudflare R2
+      // Upload E2EE payload directly to Cloudflare R2 bucket
       const result = await cloudflareApi.uploadEncryptedFile(
         blob,
         file.name,
-        file.type,
+        file.type || 'application/octet-stream',
         currentUser.id
       );
 
-      if (result.success) {
-        const isImage = file.type.startsWith('image/');
-        onSelectAttachment({
-          type: isImage ? 'image' : 'document',
-          url: isImage ? result.downloadUrl || URL.createObjectURL(file) : null,
-          name: file.name,
-          caption: file.name,
-          r2Key: result.fileKey,
-          size: file.size
-        });
-      } else {
-        // Fallback local preview
-        onSelectAttachment({
-          type: file.type.startsWith('image/') ? 'image' : 'document',
-          url: URL.createObjectURL(file),
-          name: file.name,
-          caption: file.name
-        });
-      }
+      setUploadProgress(100);
+
+      const isImg = file.type.startsWith('image/');
+      const isVid = file.type.startsWith('video/');
+      const isAud = file.type.startsWith('audio/');
+
+      let attachmentType = 'document';
+      if (isImg) attachmentType = 'image';
+      else if (isVid) attachmentType = 'video';
+      else if (isAud) attachmentType = 'audio';
+
+      const localPreviewUrl = URL.createObjectURL(file);
+      const downloadUrl = (result && result.downloadUrl) ? result.downloadUrl : localPreviewUrl;
+
+      onSelectAttachment({
+        type: attachmentType,
+        url: downloadUrl,
+        localUrl: localPreviewUrl,
+        name: file.name,
+        caption: file.name,
+        size: file.size,
+        fileKey: result?.fileKey || `e2ee/${file.name}`,
+        mimeType: file.type
+      });
+
+      sounds.playMessageSent();
     } catch (err) {
-      console.warn('File upload error:', err);
+      console.warn('[Attachment] Upload fallback:', err);
+      // Fallback local preview
+      const localUrl = URL.createObjectURL(file);
+      onSelectAttachment({
+        type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'document',
+        url: localUrl,
+        localUrl: localUrl,
+        name: file.name,
+        caption: file.name,
+        size: file.size
+      });
     } finally {
       setIsUploading(false);
       onClose();
     }
   };
 
-  const sampleAttachments = [
+  const options = [
     {
-      id: 'att-device',
-      title: 'Upload from Device (R2)',
-      icon: UploadCloud,
-      color: 'bg-brand-500/20 text-brand-400 border-brand-500/30',
-      action: () => {
-        fileInputRef.current?.click();
-      }
-    },
-    {
-      id: 'att-1',
-      title: 'Sample Photo 1',
+      id: 'opt-photo',
+      title: 'ছবি ও ফটো (Photos & Gallery)',
+      subtitle: 'JPEG, PNG, WEBP, GIF',
       icon: ImageIcon,
-      color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-      action: () => {
-        onSelectAttachment({
-          type: 'image',
-          url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
-          caption: 'Dark UI Design Mockup'
-        });
-        onClose();
-      }
+      color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+      accept: 'image/*'
     },
     {
-      id: 'att-2',
-      title: 'Sample Photo 2',
-      icon: Camera,
-      color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-      action: () => {
-        onSelectAttachment({
-          type: 'image',
-          url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
-          caption: 'Cyber Workspace'
-        });
-        onClose();
-      }
+      id: 'opt-video',
+      title: 'ভিডিও ও ক্লিপ (Videos & Clips)',
+      subtitle: 'MP4, WebM, MOV',
+      icon: Video,
+      color: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
+      accept: 'video/*'
     },
     {
-      id: 'att-3',
-      title: 'Audio / Voice Note',
-      icon: Music,
-      color: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-      action: () => {
-        onSelectAttachment({
-          type: 'audio',
-          audioDuration: '0:34'
-        });
-        onClose();
-      }
+      id: 'opt-doc',
+      title: 'ডকুমেন্ট ও ফাইল (Documents & Files)',
+      subtitle: 'PDF, DOCX, ZIP, Code',
+      icon: FileText,
+      color: 'bg-brand-500/15 text-brand-400 border-brand-500/30',
+      accept: '.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt,.json,.csv,.tar,.gz'
     }
   ];
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-30"
-        onClick={onClose}
-      />
-      
-      {/* Hidden File Input for Device Files */}
+      <div className="fixed inset-0 z-30" onClick={onClose} />
+
+      {/* Hidden input configured dynamically */}
       <input
         ref={fileInputRef}
         type="file"
+        accept={fileFilter}
         className="hidden"
-        onChange={handleDeviceFileUpload}
-        accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.txt,.zip"
+        onChange={handleFileUpload}
       />
 
-      <div className="absolute bottom-20 left-4 sm:left-6 w-68 rounded-2xl glass-dropdown p-2.5 shadow-2xl z-40 border border-slate-700/80 animate-scale-in">
-        <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-slate-800 text-xs font-semibold text-slate-300">
-          <span>Attach Content (Cloudflare R2)</span>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300">
+      <div className="absolute bottom-20 left-4 sm:left-6 w-80 rounded-3xl glass-dropdown p-3 shadow-2xl z-40 border border-slate-700/80 animate-scale-in">
+        {/* Header */}
+        <div className="flex items-center justify-between px-2 pb-2 mb-2 border-b border-slate-800 text-xs font-semibold text-slate-300">
+          <div className="flex items-center space-x-1.5">
+            <UploadCloud className="w-4 h-4 text-brand-400" />
+            <span>ফাইল ও মিডিয়া শেয়ার (Cloudflare R2)</span>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 p-1">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {isUploading ? (
-          <div className="p-4 flex flex-col items-center justify-center space-y-2 text-slate-400 text-xs font-medium">
-            <Loader2 className="w-6 h-6 text-brand-400 animate-spin" />
-            <span>Uploading to Cloudflare R2...</span>
+          <div className="p-6 flex flex-col items-center justify-center space-y-3 text-slate-300 text-xs font-medium">
+            <Loader2 className="w-7 h-7 text-brand-400 animate-spin" />
+            <span>R2 বাকেটে এনক্রিপ্ট হয়ে আপলোড হচ্ছে ({uploadProgress}%)...</span>
+            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-brand-500 to-cyan-400 h-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-1">
-            {sampleAttachments.map((item) => {
-              const Icon = item.icon;
+          <div className="space-y-1.5">
+            {options.map((opt) => {
+              const Icon = opt.icon;
               return (
                 <button
-                  key={item.id}
-                  onClick={() => {
-                    sounds.playClick();
-                    item.action();
-                  }}
-                  className="w-full flex items-center space-x-3 p-2 rounded-xl hover:bg-white/5 transition-all text-left group"
+                  key={opt.id}
+                  onClick={() => triggerPicker(opt.accept)}
+                  className="w-full flex items-center space-x-3 p-2.5 rounded-2xl hover:bg-white/5 transition-all text-left group border border-transparent hover:border-slate-700/60"
                 >
                   <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center border ${item.color} group-hover:scale-105 transition-transform`}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center border ${opt.color} group-hover:scale-105 transition-transform flex-shrink-0`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-medium text-slate-200 group-hover:text-white">
-                    {item.title}
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-slate-200 group-hover:text-white truncate">
+                      {opt.title}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      {opt.subtitle}
+                    </div>
+                  </div>
                 </button>
               );
             })}

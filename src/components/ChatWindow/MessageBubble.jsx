@@ -7,9 +7,14 @@ import {
   Pause, 
   Smile, 
   Trash2, 
-  MoreHorizontal, 
   Download,
-  Volume2
+  FileText,
+  Video,
+  Eye,
+  X,
+  ExternalLink,
+  ShieldCheck,
+  Maximize2
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
@@ -19,7 +24,7 @@ export default function MessageBubble({ message, isGroup = false }) {
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
-  const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [isMediaZoomed, setIsMediaZoomed] = useState(false);
 
   const availableReactions = ['❤️', '👍', '🔥', '😂', '😮', '🚀'];
 
@@ -29,9 +34,20 @@ export default function MessageBubble({ message, isGroup = false }) {
   };
 
   const handleReact = (emoji) => {
+    sounds.playClick();
     addReaction(message.id, emoji);
     setShowReactionPicker(false);
   };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) return 'File';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const attachment = message.attachment;
 
   return (
     <div
@@ -53,7 +69,7 @@ export default function MessageBubble({ message, isGroup = false }) {
             isSentByMe ? 'right-0' : 'left-0'
           }`}
         >
-          {/* Reaction Picker Button */}
+          {/* Reaction Picker */}
           <div className="relative">
             <button
               onClick={() => setShowReactionPicker(!showReactionPicker)}
@@ -63,7 +79,6 @@ export default function MessageBubble({ message, isGroup = false }) {
               <Smile className="w-3.5 h-3.5" />
             </button>
 
-            {/* Reaction Popover */}
             {showReactionPicker && (
               <>
                 <div
@@ -85,7 +100,7 @@ export default function MessageBubble({ message, isGroup = false }) {
             )}
           </div>
 
-          {/* Delete Message Button */}
+          {/* Delete Message */}
           <button
             onClick={() => deleteMessage(message.id)}
             className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
@@ -95,33 +110,93 @@ export default function MessageBubble({ message, isGroup = false }) {
           </button>
         </div>
 
-        {/* The Message Bubble Container */}
+        {/* Message Bubble Container */}
         <div
           className={`px-4 py-2.5 rounded-2xl relative shadow-md transition-all ${
             isSentByMe
-              ? 'bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 text-white rounded-br-xs shadow-glow-brand'
-              : 'bg-background-card/90 text-slate-100 rounded-bl-xs border border-slate-700/60 backdrop-blur-md'
+              ? 'bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 text-white rounded-br-sm shadow-glow-brand'
+              : 'bg-background-card/90 text-slate-100 rounded-bl-sm border border-slate-700/60 backdrop-blur-md'
           }`}
         >
-          {/* Image Attachment Preview */}
-          {message.attachment && message.attachment.type === 'image' && (
-            <div className="mb-2 -mx-2 -mt-1 rounded-xl overflow-hidden relative group/img">
+          {/* 1. Image Attachment Preview */}
+          {attachment && attachment.type === 'image' && (
+            <div className="mb-2 -mx-2 -mt-1 rounded-xl overflow-hidden relative group/img bg-slate-950/50">
               <img
-                src={message.attachment.url}
-                alt="Attachment"
-                onClick={() => setIsImageZoomed(true)}
-                className="w-full max-h-60 object-cover cursor-pointer hover:scale-[1.02] transition-transform duration-300 rounded-xl"
+                src={attachment.url || attachment.localUrl}
+                alt={attachment.name || 'Image'}
+                onClick={() => setIsMediaZoomed(true)}
+                className="w-full max-h-72 object-cover cursor-pointer hover:scale-[1.02] transition-transform duration-300 rounded-xl"
               />
-              {message.attachment.caption && (
-                <p className="text-xs mt-1.5 px-2 text-slate-300 font-medium">
-                  {message.attachment.caption}
+              <button
+                onClick={() => setIsMediaZoomed(true)}
+                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white opacity-0 group-hover/img:opacity-100 transition-opacity backdrop-blur-sm"
+                title="Zoom Image"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+              {attachment.caption && (
+                <p className="text-xs mt-1.5 px-2 text-slate-200 font-medium">
+                  {attachment.caption}
                 </p>
               )}
             </div>
           )}
 
-          {/* Voice Note Audio Bubble */}
-          {message.audioDuration && (
+          {/* 2. Video Attachment Preview & Player */}
+          {attachment && attachment.type === 'video' && (
+            <div className="mb-2 -mx-2 -mt-1 rounded-xl overflow-hidden relative bg-slate-950/80 border border-slate-800">
+              <video
+                src={attachment.url || attachment.localUrl}
+                controls
+                className="w-full max-h-72 rounded-xl object-contain bg-black"
+                preload="metadata"
+              />
+              <div className="p-2 flex items-center justify-between text-xs text-slate-300">
+                <div className="flex items-center space-x-1.5 truncate">
+                  <Video className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                  <span className="truncate font-semibold text-[11px]">{attachment.name || 'Video Clip'}</span>
+                </div>
+                {attachment.size && (
+                  <span className="text-[10px] text-slate-400 font-mono flex-shrink-0 ml-2">
+                    {formatFileSize(attachment.size)}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 3. Document / Generic File Card */}
+          {attachment && (attachment.type === 'document' || attachment.type === 'file') && (
+            <div className="mb-2 -mx-1 -mt-0.5 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between space-x-3">
+              <div className="flex items-center space-x-3 truncate">
+                <div className="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center flex-shrink-0 border border-brand-500/30">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-100 truncate">{attachment.name || 'Document'}</p>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    {formatFileSize(attachment.size)} • E2EE Protected
+                  </p>
+                </div>
+              </div>
+
+              {attachment.url && (
+                <a
+                  href={attachment.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={attachment.name}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex-shrink-0"
+                  title="Download File"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* 4. Voice Note Audio Waveform */}
+          {(message.audioDuration || (attachment && attachment.type === 'audio')) && (
             <div className="flex items-center space-x-3 py-1 min-w-[200px] sm:min-w-[240px]">
               <button
                 onClick={toggleAudioPlay}
@@ -138,7 +213,6 @@ export default function MessageBubble({ message, isGroup = false }) {
                 )}
               </button>
 
-              {/* Animated Waveform Visualizer */}
               <div className="flex-1 flex items-center gap-0.5 h-6">
                 {[40, 65, 85, 30, 90, 50, 75, 100, 45, 60, 80, 35, 70, 95, 55, 40, 85, 60, 30].map(
                   (height, i) => (
@@ -158,33 +232,34 @@ export default function MessageBubble({ message, isGroup = false }) {
               </div>
 
               <span className="text-[11px] font-mono opacity-80 whitespace-nowrap">
-                {message.audioDuration}
+                {message.audioDuration || '0:15'}
               </span>
             </div>
           )}
 
           {/* Text Content */}
           {message.content && (
-            <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
+            <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap select-text break-words">
               {message.content}
             </p>
           )}
 
-          {/* Bottom Metas (Timestamp + Receipts) */}
+          {/* Metadata & Status Footer */}
           <div
-            className={`flex items-center justify-end space-x-1 mt-1 text-[10px] font-mono select-none ${
-              isSentByMe ? 'text-indigo-100/80' : 'text-slate-400'
+            className={`flex items-center justify-end space-x-1 mt-1 text-[10px] select-none ${
+              isSentByMe ? 'text-brand-100/70' : 'text-slate-400'
             }`}
           >
             <span>{message.timestamp}</span>
+
             {isSentByMe && (
-              <span title={`Status: ${message.status}`}>
+              <span className="ml-0.5">
                 {message.status === 'read' ? (
-                  <CheckCheck className="w-3.5 h-3.5 text-accent-cyan inline" />
+                  <CheckCheck className="w-3.5 h-3.5 text-cyan-300" />
                 ) : message.status === 'delivered' ? (
-                  <CheckCheck className="w-3.5 h-3.5 text-white/80 inline" />
+                  <CheckCheck className="w-3.5 h-3.5 opacity-60" />
                 ) : (
-                  <Check className="w-3.5 h-3.5 text-white/60 inline" />
+                  <Check className="w-3.5 h-3.5 opacity-60" />
                 )}
               </span>
             )}
@@ -192,42 +267,58 @@ export default function MessageBubble({ message, isGroup = false }) {
         </div>
       </div>
 
-      {/* Emoji Reactions Tray */}
+      {/* Emoji Reactions List */}
       {message.reactions && message.reactions.length > 0 && (
         <div
           className={`flex items-center gap-1 mt-1 ${
-            isSentByMe ? 'mr-1' : 'ml-1'
+            isSentByMe ? 'mr-2' : 'ml-2'
           }`}
         >
-          {message.reactions.map((emoji, idx) => (
-            <button
-              key={idx}
-              onClick={() => addReaction(message.id, emoji)}
-              className="px-1.5 py-0.5 rounded-full bg-slate-800/90 border border-slate-700/80 text-xs shadow-sm hover:scale-110 active:scale-95 transition-all flex items-center gap-1"
+          {message.reactions.map((emoji, index) => (
+            <span
+              key={index}
+              className="text-xs px-1.5 py-0.5 rounded-full bg-slate-900/90 border border-slate-700/60 shadow-sm animate-scale-in"
             >
-              <span>{emoji}</span>
-              <span className="text-[10px] text-slate-400 font-mono">1</span>
-            </button>
+              {emoji}
+            </span>
           ))}
         </div>
       )}
 
-      {/* Zoom Image Lightbox Modal */}
-      {isImageZoomed && message.attachment && (
+      {/* Lightbox Media Modal for Full Screen Image */}
+      {isMediaZoomed && attachment && attachment.type === 'image' && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
-          onClick={() => setIsImageZoomed(false)}
+          className="fixed inset-0 z-60 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setIsMediaZoomed(false)}
         >
           <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+            <button
+              onClick={() => setIsMediaZoomed(false)}
+              className="absolute -top-12 right-0 p-2 text-slate-400 hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-all"
+            >
+              <X className="w-6 h-6" />
+            </button>
             <img
-              src={message.attachment.url}
-              alt="Zoomed"
-              className="max-w-full max-h-[80vh] rounded-2xl object-contain shadow-2xl"
+              src={attachment.url || attachment.localUrl}
+              alt={attachment.name || 'Fullscreen Image'}
+              className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-slate-800"
             />
-            {message.attachment.caption && (
-              <p className="mt-3 text-slate-200 text-sm font-medium">
-                {message.attachment.caption}
-              </p>
+            {attachment.name && (
+              <div className="mt-3 flex items-center space-x-3 text-xs text-slate-300">
+                <span>{attachment.name}</span>
+                {attachment.url && (
+                  <a
+                    href={attachment.url}
+                    download={attachment.name}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 text-white flex items-center space-x-1"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download</span>
+                  </a>
+                )}
+              </div>
             )}
           </div>
         </div>
