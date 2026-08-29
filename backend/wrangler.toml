@@ -1,0 +1,32 @@
+name = "shunnyo-backend"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# 1. Cloudflare D1 Database Binding (User Public Keys & Metadata)
+[[d1_databases]]
+binding = "DB"
+database_name = "shunnyo-db"
+database_id = "00000000-0000-0000-0000-000000000000" # Replace with actual D1 database UUID on cloudflare
+
+# 2. Cloudflare R2 Storage Bucket Binding (E2EE Encrypted Files & Voice Notes)
+[[r2_buckets]]
+binding = "STORAGE_BUCKET"
+bucket_name = "shunnyo-e2ee-vault"
+
+# 3. Cloudflare Durable Objects for WebRTC WebSocket Room Orchestration
+[durable_objects]
+bindings = [
+  { name = "SIGNALING_ROOM", class_name = "SignalingRoom" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["SignalingRoom"]
+
+# 4. Environment Variables
+[vars]
+ENVIRONMENT = "production"
+APP_NAME = "Shunnyo Cloudflare Backend"
+CORS_ORIGIN = "*"
+R2_PUBLIC_ENDPOINT = "https://vault.shunnyo.io"

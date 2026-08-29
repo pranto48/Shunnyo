@@ -1,0 +1,16 @@
+{
+  "name": "shunnyo-backend",
+  "version": "1.0.0",
+  "description": "Cloudflare Workers Backend for Shunnyo - WebRTC Signaling, D1 Database & R2 E2EE Storage Vault",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "d1:init": "wrangler d1 execute DB --local --file=./schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0",
+    "wrangler": "^3.83.0"
+  }
+}
