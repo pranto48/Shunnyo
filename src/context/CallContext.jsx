@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { sounds } from '../utils/soundEffects';
 import { webrtcService } from '../services/webrtcService';
+import { liveChatService } from '../services/liveChatService';
+import { currentUser } from '../data/mockData';
 
 const CallContext = createContext();
 
 export function CallProvider({ children }) {
   const [callState, setCallState] = useState('idle'); // 'idle' | 'calling' | 'incoming' | 'connected' | 'ended'
-  const [callType, setCallType] = useState('video'); // 'video' | 'audio'
+  const [callType, setCallType] = useState('audio'); // 'audio' | 'video'
   const [callTarget, setCallTarget] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -21,13 +23,13 @@ export function CallProvider({ children }) {
   const [webrtcStatus, setWebrtcStatus] = useState('idle');
 
   const durationTimerRef = useRef(null);
-  const connectingTimerRef = useRef(null);
+  const simulationTimerRef = useRef(null);
 
-  // Initialize WebRTC Call Handlers on mount
+  // 1. Initialize WebRTC Media Handlers & WebSocket Call Signaling
   useEffect(() => {
     webrtcService.initialize({
       onRemoteStream: (stream) => {
-        console.log('[CallContext] Received remote WebRTC stream');
+        console.log('[WebRTC Call] Received remote audio/video stream');
         setRemoteStream(stream);
       },
       onConnectionStateChange: (state) => {
@@ -41,13 +43,43 @@ export function CallProvider({ children }) {
       }
     });
 
+    // Listen for incoming call signals over WebSocket
+    const unsubOffer = liveChatService.on('offer', (data) => {
+      console.log('[WebRTC Call] Incoming call offer received:', data);
+      if (callState === 'idle') {
+        const callerContact = {
+          id: data.fromPeerId || data.callerId || 'peer_caller',
+          name: data.callerName || 'Online Peer',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+          status: 'online',
+          role: 'Audio Caller'
+        };
+        receiveCall(callerContact, data.callType || 'audio');
+      }
+    });
+
+    const unsubAnswer = liveChatService.on('answer', async (data) => {
+      console.log('[WebRTC Call] Remote call answer received');
+      sounds.stopRingtone();
+      setCallState('connected');
+      sounds.playCallConnected();
+    });
+
+    const unsubHangup = liveChatService.on('hangup', () => {
+      console.log('[WebRTC Call] Remote peer hung up');
+      endCall();
+    });
+
     return () => {
+      unsubOffer();
+      unsubAnswer();
+      unsubHangup();
       webrtcService.close();
       sounds.stopRingtone();
     };
-  }, []);
+  }, [callState]);
 
-  // Duration timer when call is connected
+  // Duration timer when connected
   useEffect(() => {
     if (callState === 'connected') {
       setCallDuration(0);
@@ -62,13 +94,14 @@ export function CallProvider({ children }) {
     }
 
     return () => {
-      if (durationTimerRef.current) {
-        clearInterval(durationTimerRef.current);
-      }
+      if (durationTimerRef.current) clearInterval(durationTimerRef.current);
     };
   }, [callState]);
 
-  const startCall = async (contact, type = 'video') => {
+  /**
+   * Start Outgoing Audio/Video Call to an Online User
+   */
+  const startCall = async (contact, type = 'audio') => {
     setCallTarget(contact);
     setCallType(type);
     setCallState('calling');
@@ -80,24 +113,41 @@ export function CallProvider({ children }) {
 
     sounds.startOutgoingRingtone();
 
-    // 1. Initialize WebRTC Media Stream & SDP Offer
+    // 1. Acquire Local Audio/Video Media Stream
     try {
       const stream = await webrtcService.getLocalMediaStream(type);
       setLocalStream(stream);
-      await webrtcService.createOffer();
+
+      // 2. Generate SDP Offer
+      const offer = await webrtcService.createOffer();
+
+      // 3. Broadcast Offer over Cloudflare WebSocket to peer
+      liveChatService.sendPayload('offer', {
+        sdp: offer?.sdp,
+        callType: type,
+        callerId: currentUser.id,
+        callerName: currentUser.name,
+        calleeId: contact.id
+      });
     } catch (e) {
-      console.warn('WebRTC start error:', e);
+      console.warn('[WebRTC Audio] Stream init warning:', e);
     }
 
-    // Auto-connect call after 3.5s for seamless simulation
-    if (connectingTimerRef.current) clearTimeout(connectingTimerRef.current);
-    connectingTimerRef.current = setTimeout(() => {
-      setCallState('connected');
-      sounds.playCallConnected();
-    }, 3500);
+    // Auto-connect fallback simulation after 3.2s if peer is demo or offline
+    if (simulationTimerRef.current) clearTimeout(simulationTimerRef.current);
+    if (contact.id.startsWith('c-')) {
+      simulationTimerRef.current = setTimeout(() => {
+        sounds.stopRingtone();
+        setCallState('connected');
+        sounds.playCallConnected();
+      }, 3200);
+    }
   };
 
-  const receiveCall = (contact, type = 'video') => {
+  /**
+   * Receive Incoming Call
+   */
+  const receiveCall = (contact, type = 'audio') => {
     setCallTarget(contact);
     setCallType(type);
     setCallState('incoming');
@@ -108,11 +158,21 @@ export function CallProvider({ children }) {
     sounds.startIncomingRingtone();
   };
 
+  /**
+   * Accept Incoming Call
+   */
   const acceptCall = async () => {
     sounds.stopRingtone();
     try {
       const stream = await webrtcService.getLocalMediaStream(callType);
       setLocalStream(stream);
+
+      const answer = await webrtcService.createAnswer();
+      liveChatService.sendPayload('answer', {
+        sdp: answer?.sdp,
+        fromPeerId: currentUser.id,
+        calleeId: callTarget?.id
+      });
     } catch (e) {
       console.warn('WebRTC accept error:', e);
     }
@@ -120,7 +180,11 @@ export function CallProvider({ children }) {
     sounds.playCallConnected();
   };
 
+  /**
+   * Decline Incoming Call
+   */
   const declineCall = () => {
+    liveChatService.sendPayload('hangup', { fromPeerId: currentUser.id });
     webrtcService.close();
     sounds.stopRingtone();
     sounds.playCallEnded();
@@ -130,11 +194,15 @@ export function CallProvider({ children }) {
       setCallTarget(null);
       setLocalStream(null);
       setRemoteStream(null);
-    }, 1200);
+    }, 1000);
   };
 
+  /**
+   * End Active Call
+   */
   const endCall = () => {
-    if (connectingTimerRef.current) clearTimeout(connectingTimerRef.current);
+    if (simulationTimerRef.current) clearTimeout(simulationTimerRef.current);
+    liveChatService.sendPayload('hangup', { fromPeerId: currentUser.id });
     webrtcService.close();
     sounds.stopRingtone();
     sounds.playCallEnded();
@@ -145,7 +213,7 @@ export function CallProvider({ children }) {
       setLocalStream(null);
       setRemoteStream(null);
       setIsMinimized(false);
-    }, 1200);
+    }, 1000);
   };
 
   const toggleMute = () => {
@@ -165,24 +233,28 @@ export function CallProvider({ children }) {
   const toggleScreenShare = async () => {
     sounds.playClick();
     if (!isScreenSharing) {
-      const stream = await webrtcService.startScreenShare();
-      if (stream) {
+      const screenStream = await webrtcService.startScreenShare();
+      if (screenStream) {
+        setLocalStream(screenStream);
         setIsScreenSharing(true);
       }
     } else {
-      await webrtcService.stopScreenShare();
-      setIsScreenSharing(false);
+      const origStream = await webrtcService.stopScreenShare(callType);
+      if (origStream) {
+        setLocalStream(origStream);
+        setIsScreenSharing(false);
+      }
     }
   };
 
   const toggleSpeaker = () => {
     sounds.playClick();
-    setIsSpeakerMuted((prev) => !prev);
+    setIsSpeakerMuted(!isSpeakerMuted);
   };
 
   const toggleMinimize = () => {
     sounds.playClick();
-    setIsMinimized((prev) => !prev);
+    setIsMinimized(!isMinimized);
   };
 
   const formatDuration = (seconds) => {
@@ -203,7 +275,6 @@ export function CallProvider({ children }) {
         isSpeakerMuted,
         isMinimized,
         callDuration,
-        formatDuration,
         localStream,
         remoteStream,
         webrtcStatus,
@@ -216,7 +287,8 @@ export function CallProvider({ children }) {
         toggleVideo,
         toggleScreenShare,
         toggleSpeaker,
-        toggleMinimize
+        toggleMinimize,
+        formatDuration
       }}
     >
       {children}

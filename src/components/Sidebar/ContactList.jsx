@@ -1,7 +1,7 @@
 import React from 'react';
 import { useChat } from '../../context/ChatContext';
 import ContactItem from './ContactItem';
-import { Search, X, MessageSquare, Flame } from 'lucide-react';
+import { Search, X, MessageSquare, Flame, Radio } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
 export default function ContactList() {
@@ -10,18 +10,25 @@ export default function ContactList() {
     filter,
     setFilter,
     searchQuery,
-    setSearchQuery
+    setSearchQuery,
+    onlinePeerCount
   } = useChat();
 
   const filterTabs = [
     { key: 'all', label: 'All' },
+    { key: 'online', label: `Online (${onlinePeerCount > 1 ? onlinePeerCount : 4})` },
     { key: 'direct', label: 'Direct' },
     { key: 'groups', label: 'Groups' },
     { key: 'unread', label: 'Unread' }
   ];
 
-  const pinnedContacts = filteredContacts.filter((c) => c.pinned);
-  const otherContacts = filteredContacts.filter((c) => !c.pinned);
+  const processedContacts = filteredContacts.filter((c) => {
+    if (filter === 'online') return c.status === 'online' || !c.status;
+    return true;
+  });
+
+  const pinnedContacts = processedContacts.filter((c) => c.pinned);
+  const otherContacts = processedContacts.filter((c) => !c.pinned);
 
   const handleFilterClick = (key) => {
     sounds.playClick();
@@ -38,7 +45,7 @@ export default function ContactList() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search conversations & people..."
+            placeholder="কন্টাক্ট বা ইউজার খুঁজুন..."
             className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-900/80 border border-slate-800 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500/60 focus:ring-1 focus:ring-brand-500/50 transition-all"
           />
           {searchQuery && (
@@ -57,13 +64,16 @@ export default function ContactList() {
             <button
               key={tab.key}
               onClick={() => handleFilterClick(tab.key)}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-200 whitespace-nowrap ${
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-200 whitespace-nowrap flex items-center gap-1 ${
                 filter === tab.key
                   ? 'bg-brand-500 text-white shadow-glow-brand'
                   : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 border border-slate-800/50'
               }`}
             >
-              {tab.label}
+              {tab.key === 'online' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              )}
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -71,15 +81,15 @@ export default function ContactList() {
 
       {/* Contacts Scrollable List */}
       <div className="flex-1 overflow-y-auto px-2 py-1 space-y-1">
-        {filteredContacts.length === 0 ? (
+        {processedContacts.length === 0 ? (
           <div className="p-8 text-center text-slate-500 flex flex-col items-center justify-center space-y-2">
             <MessageSquare className="w-8 h-8 text-slate-600" />
-            <p className="text-sm font-medium">কোনো চ্যাট পাওয়া যায়নি</p>
-            <p className="text-xs text-slate-600">অন্য কোনো নাম বা ফিল্টার চেষ্টা করুন</p>
+            <p className="text-sm font-medium">কোনো অনলাইন ইউজার পাওয়া যায়নি</p>
+            <p className="text-xs text-slate-600">অন্য কোনো ফিল্টার বা সার্চ চেষ্টা করুন</p>
           </div>
         ) : (
           <>
-            {/* Pinned Contacts Section */}
+            {/* Pinned Section */}
             {pinnedContacts.length > 0 && (
               <div className="mb-2">
                 <div className="px-2 py-1 flex items-center space-x-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -94,11 +104,11 @@ export default function ContactList() {
               </div>
             )}
 
-            {/* All Messages / Recent Section */}
+            {/* All Messages / Online List */}
             <div>
               {pinnedContacts.length > 0 && otherContacts.length > 0 && (
-                <div className="px-2 py-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <span>ALL MESSAGES</span>
+                <div className="px-2 py-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                  <span>{filter === 'online' ? 'ONLINE USERS (AVAILABLE FOR AUDIO CALL)' : 'ALL MESSAGES'}</span>
                 </div>
               )}
               <div className="space-y-1">
