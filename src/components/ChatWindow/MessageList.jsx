@@ -2,11 +2,13 @@ import React, { useEffect, useRef } from 'react';
 import { useChat } from '../../context/ChatContext';
 import MessageBubble from './MessageBubble';
 import Avatar from '../Shared/Avatar';
-import { Lock, Shield, Sparkles } from 'lucide-react';
+import { Lock, Shield, Sparkles, Radio, Zap } from 'lucide-react';
 
 export default function MessageList() {
-  const { activeMessages, activeContact } = useChat();
+  const { activeMessages, activeContact, activeContactId, liveTextStreams } = useChat();
   const bottomRef = useRef(null);
+
+  const liveStream = liveTextStreams && liveTextStreams[activeContactId];
 
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -14,7 +16,7 @@ export default function MessageList() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [activeMessages, activeContact?.isTyping]);
+  }, [activeMessages, activeContact?.isTyping, liveStream?.text]);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2 relative bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.08),rgba(255,255,255,0))]">
@@ -22,7 +24,7 @@ export default function MessageList() {
       <div className="flex justify-center my-4">
         <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-[11px] text-slate-400 backdrop-blur-md shadow-sm">
           <Lock className="w-3 h-3 text-accent-cyan" />
-          <span>Messages & calls are end-to-end encrypted with zero-knowledge protocol.</span>
+          <span>মেসেজ ও কলসমূহ এন্ড-টু-এন্ড এনক্রিপ্টেড ও সম্পূর্ণ নিরাপদ।</span>
         </div>
       </div>
 
@@ -42,8 +44,32 @@ export default function MessageList() {
         />
       ))}
 
-      {/* Typing indicator bubble */}
-      {activeContact?.isTyping && (
+      {/* Real-Time Live Keystroke Text Streaming Bubble */}
+      {liveStream && liveStream.text && (
+        <div className="flex items-end space-x-2 mb-3 animate-fade-in max-w-[85%] sm:max-w-[70%]">
+          <Avatar
+            src={activeContact?.avatar}
+            name={activeContact?.name}
+            size="sm"
+            showStatus={false}
+          />
+          <div className="px-4 py-2.5 rounded-2xl rounded-bl-xs bg-slate-900/90 border border-brand-500/60 shadow-glow-brand backdrop-blur-xl transition-all">
+            <div className="flex items-center space-x-1.5 mb-1">
+              <Zap className="w-3 h-3 text-brand-400 animate-pulse" />
+              <span className="text-[10px] font-bold text-brand-300 font-mono">
+                {liveStream.senderName || activeContact?.name || 'Peer'} লাইভ লিখছেন:
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-100 font-sans break-words whitespace-pre-wrap">
+              {liveStream.text}
+              <span className="inline-block w-1.5 h-3.5 bg-brand-400 ml-1 animate-ping" />
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Typing indicator bubble (when typing but no live text stream) */}
+      {activeContact?.isTyping && (!liveStream || !liveStream.text) && (
         <div className="flex items-end space-x-2 mb-3 animate-fade-in">
           <Avatar
             src={activeContact.avatar}

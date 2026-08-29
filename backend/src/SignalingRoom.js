@@ -95,6 +95,20 @@ export class SignalingRoom {
             });
             break;
 
+          // --- 2b. Real-Time Live Keystroke Text Streaming ---
+          case 'chat:live_text':
+            this.broadcast(webSocket, {
+              type: 'chat:live_text',
+              data: {
+                senderId: userId,
+                senderName: username,
+                text: data.text || '',
+                contactId: data.contactId,
+                recipientId: data.recipientId
+              }
+            });
+            break;
+
           // --- 3. Live Reaction ---
           case 'chat:reaction':
             this.broadcast(webSocket, {

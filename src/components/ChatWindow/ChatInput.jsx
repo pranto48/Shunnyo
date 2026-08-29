@@ -18,7 +18,14 @@ import {
 import { sounds } from '../../utils/soundEffects';
 
 export default function ChatInput() {
-  const { sendMessage, activeContact, sendLiveTyping, replyingToMessage, setReplyingToMessage } = useChat();
+  const { 
+    sendMessage, 
+    activeContact, 
+    sendLiveTyping, 
+    broadcastLiveText,
+    replyingToMessage, 
+    setReplyingToMessage 
+  } = useChat();
   const { startCall, callState } = useCall();
 
   const [text, setText] = useState('');
@@ -39,12 +46,16 @@ export default function ChatInput() {
     const val = e.target.value;
     setText(val);
 
+    if (broadcastLiveText) {
+      broadcastLiveText(val);
+    }
+
     if (sendLiveTyping) {
       sendLiveTyping(true);
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       typingTimerRef.current = setTimeout(() => {
         sendLiveTyping(false);
-      }, 1800);
+      }, 2500);
     }
   };
 
@@ -53,6 +64,7 @@ export default function ChatInput() {
 
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     if (sendLiveTyping) sendLiveTyping(false);
+    if (broadcastLiveText) broadcastLiveText('');
 
     sendMessage(text.trim(), pendingAttachment);
 

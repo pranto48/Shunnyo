@@ -33,6 +33,7 @@ export function ChatProvider({ children }) {
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [onlinePeerCount, setOnlinePeerCount] = useState(1);
   const [typingUsers, setTypingUsers] = useState({}); // { [userId]: boolean }
+  const [liveTextStreams, setLiveTextStreams] = useState({}); // { [contactId]: { text, senderName, senderId } }
 
   // Admin Portal State
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
@@ -217,6 +218,20 @@ export function ChatProvider({ children }) {
       });
     });
 
+    // Handle Real-Time Keystroke Live Text Streaming
+    const unsubLiveText = liveChatService.on('live_text', (data) => {
+      const convoId = data.contactId || data.senderId;
+      setLiveTextStreams((prev) => ({
+        ...prev,
+        [convoId]: data.text ? {
+          text: data.text,
+          senderName: data.senderName,
+          senderId: data.senderId,
+          updatedAt: Date.now()
+        } : null
+      }));
+    });
+
     // Handle Presence Updates
     const unsubPresence = liveChatService.on('presence', (data) => {
       if (data.totalPeers) {
@@ -231,6 +246,7 @@ export function ChatProvider({ children }) {
       unsubReaction();
       unsubEdit();
       unsubDelete();
+      unsubLiveText();
       unsubPresence();
     };
   }, [userKeyPair, activeContactId]);
@@ -480,6 +496,10 @@ export function ChatProvider({ children }) {
     });
   };
 
+  const broadcastLiveText = (text) => {
+    liveChatService.sendLiveTextStream(text, activeContactId, activeContactId);
+  };
+
   const regenerateKeys = async () => {
     sounds.playClick();
     const newKeyPair = await generateUserKeyPair();
@@ -517,6 +537,8 @@ export function ChatProvider({ children }) {
         updateMessage,
         sendMessage,
         sendLiveTyping,
+        broadcastLiveText,
+        liveTextStreams,
         addReaction,
         deleteMessage,
         triggerSimulatedResponse,

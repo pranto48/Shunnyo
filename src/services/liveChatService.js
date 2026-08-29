@@ -110,6 +110,13 @@ class LiveChatService {
   }
 
   /**
+   * Broadcast real-time keystroke text stream
+   */
+  sendLiveTextStream(text, recipientId, contactId) {
+    this.sendPayload('chat:live_text', { text, recipientId, contactId });
+  }
+
+  /**
    * Broadcast emoji reaction
    */
   sendReaction(messageId, emoji, contactId) {
