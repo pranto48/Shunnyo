@@ -303,9 +303,9 @@ export function ChatProvider({ children }) {
   };
 
   /**
-   * Send Message (with optional attachment and reply-to metadata)
+   * Send Message (with optional attachment, reply-to metadata, and custom text style)
    */
-  const sendMessage = async (text, attachment = null, explicitReplyTo = null) => {
+  const sendMessage = async (text, attachment = null, explicitReplyTo = null, style = null) => {
     if (!text?.trim() && !attachment) return;
 
     const now = new Date();
@@ -343,7 +343,8 @@ export function ChatProvider({ children }) {
       attachment,
       encryptedEnvelope,
       reactions: [],
-      replyTo: replyMetadata
+      replyTo: replyMetadata,
+      style: style || null
     };
 
     sounds.playMessageSent();
@@ -364,7 +365,8 @@ export function ChatProvider({ children }) {
       attachment,
       encryptedEnvelope,
       timestamp: timeString,
-      replyTo: replyMetadata
+      replyTo: replyMetadata,
+      style: style || null
     });
 
     // 3. Mark delivery receipts

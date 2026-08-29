@@ -375,12 +375,21 @@ export default function MessageBubble({ message, isGroup = false }) {
                 />
               )}
 
-              {/* 6. Text Content or Solo Large Emojis */}
+              {/* 6. Text Content or Solo Large Emojis with Custom Color & Size */}
               {message.content && (
                 <p
+                  style={{
+                    color: message.style?.textColor || message.textColor || undefined
+                  }}
                   className={`leading-relaxed whitespace-pre-wrap select-text break-words ${
                     isSoloEmoji
                       ? 'text-4xl sm:text-5xl py-1 text-center select-none hover:scale-110 transition-transform cursor-default'
+                      : (message.style?.textSize || message.textSize) === 'sm'
+                      ? 'text-xs'
+                      : (message.style?.textSize || message.textSize) === 'lg'
+                      ? 'text-base font-medium'
+                      : (message.style?.textSize || message.textSize) === 'xl'
+                      ? 'text-lg font-bold'
                       : 'text-xs sm:text-sm'
                   }`}
                 >

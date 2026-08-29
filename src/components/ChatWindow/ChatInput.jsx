@@ -1,19 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useChat } from '../../context/ChatContext';
 import { useCall } from '../../context/CallContext';
+import EmojiPicker from './EmojiPicker';
 import AttachmentModal from './AttachmentModal';
 import VoiceRecorderBar from './VoiceRecorderBar';
-import EmojiPicker from './EmojiPicker';
 import { audioRecorderEngine } from '../../utils/audioRecorder';
 import { 
-  Paperclip, 
   Send, 
   Smile, 
+  Paperclip, 
   Mic, 
   Image as ImageIcon, 
   X, 
-  Sparkles,
-  Reply
+  Reply,
+  Type,
+  Palette,
+  Check
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
@@ -31,15 +33,33 @@ export default function ChatInput() {
   const [text, setText] = useState('');
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showStyleMenu, setShowStyleMenu] = useState(false);
   const [pendingAttachment, setPendingAttachment] = useState(null);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+
+  // Text Styling State
+  const [textColor, setTextColor] = useState('');
+  const [textSize, setTextSize] = useState('normal'); // 'sm' | 'normal' | 'lg' | 'xl'
 
   const inputRef = useRef(null);
   const typingTimerRef = useRef(null);
 
-  const popularEmojis = [
-    '😀', '😂', '😍', '🔥', '👍', '❤️', '🎉', '🚀',
-    '✨', '💯', '🙌', '😎', '💡', '⚡', '🤖', '🔒'
+  const colorSwatches = [
+    { label: 'ডিফল্ট', value: '', color: 'bg-slate-200 border-white/40' },
+    { label: 'সায়ান', value: '#06b6d4', color: 'bg-cyan-400 border-cyan-300' },
+    { label: 'সবুজ', value: '#10b981', color: 'bg-emerald-400 border-emerald-300' },
+    { label: 'গোল্ডেন', value: '#fbbf24', color: 'bg-amber-400 border-amber-300' },
+    { label: 'গোলাপী', value: '#f43f5e', color: 'bg-rose-400 border-rose-300' },
+    { label: 'ভায়োলেট', value: '#c084fc', color: 'bg-purple-400 border-purple-300' },
+    { label: 'কমলা', value: '#fb923c', color: 'bg-orange-400 border-orange-300' },
+    { label: 'পিঙ্ক', value: '#f472b6', color: 'bg-pink-400 border-pink-300' }
+  ];
+
+  const sizeOptions = [
+    { key: 'sm', label: 'ছোট (Small)', sizeClass: 'text-xs' },
+    { key: 'normal', label: 'স্বাভাবিক (Normal)', sizeClass: 'text-sm' },
+    { key: 'lg', label: 'বড় (Large)', sizeClass: 'text-base font-medium' },
+    { key: 'xl', label: 'অতিরিক্ত বড় (Extra Large)', sizeClass: 'text-lg font-bold' }
   ];
 
   const handleInputChange = (e) => {
@@ -66,7 +86,8 @@ export default function ChatInput() {
     if (sendLiveTyping) sendLiveTyping(false);
     if (broadcastLiveText) broadcastLiveText('');
 
-    sendMessage(text.trim(), pendingAttachment);
+    const stylePayload = textColor || textSize !== 'normal' ? { textColor, textSize } : null;
+    sendMessage(text.trim(), pendingAttachment, null, stylePayload);
 
     setText('');
     setPendingAttachment(null);
@@ -94,7 +115,6 @@ export default function ChatInput() {
       sounds.playMessageSent();
     } catch (err) {
       console.warn('Microphone permission denied:', err);
-      // Fallback: Show voice recording simulation
       setIsRecordingVoice(true);
     }
   };
@@ -103,6 +123,11 @@ export default function ChatInput() {
     setIsRecordingVoice(false);
     sendMessage('', audioAttachment);
   };
+
+  const currentSizeClass = 
+    textSize === 'sm' ? 'text-xs' :
+    textSize === 'lg' ? 'text-base font-medium' :
+    textSize === 'xl' ? 'text-lg font-bold' : 'text-sm';
 
   return (
     <div className="p-3 sm:p-4 bg-background-surface/90 border-t border-slate-800/80 backdrop-blur-xl relative z-20 safe-bottom">
@@ -159,6 +184,78 @@ export default function ChatInput() {
         />
       )}
 
+      {/* Text Styling (Color & Size) Popover */}
+      {showStyleMenu && (
+        <>
+          <div 
+            className="fixed inset-0 z-30" 
+            onClick={() => setShowStyleMenu(false)} 
+          />
+          <div className="absolute left-4 bottom-20 w-72 rounded-3xl glass-dropdown p-4 shadow-2xl z-40 border border-slate-700/80 animate-scale-in select-none">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+              <div className="flex items-center space-x-2">
+                <Palette className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs font-bold text-white">টেক্সট কালার ও সাইজ</span>
+              </div>
+              <button
+                onClick={() => setShowStyleMenu(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Color Swatches */}
+            <div className="mb-3">
+              <label className="block text-[11px] font-semibold text-slate-300 mb-2">রং নির্বাচন করুন:</label>
+              <div className="grid grid-cols-4 gap-2">
+                {colorSwatches.map((swatch, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      sounds.playClick();
+                      setTextColor(swatch.value);
+                    }}
+                    className={`h-7 rounded-xl flex items-center justify-center border transition-all ${swatch.color} ${
+                      textColor === swatch.value ? 'ring-2 ring-white scale-110 shadow-lg' : 'hover:scale-105 opacity-80 hover:opacity-100'
+                    }`}
+                    title={swatch.label}
+                  >
+                    {textColor === swatch.value && <Check className="w-3.5 h-3.5 text-black stroke-[3]" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font Size Selector */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">ফন্ট সাইজ:</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {sizeOptions.map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => {
+                      sounds.playClick();
+                      setTextSize(opt.key);
+                    }}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-medium border text-left flex items-center justify-between transition-all ${
+                      textSize === opt.key
+                        ? 'bg-brand-500/25 border-brand-500/60 text-brand-300'
+                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-900'
+                    }`}
+                  >
+                    <span className="truncate">{opt.label}</span>
+                    {textSize === opt.key && <Check className="w-3 h-3 text-brand-400 flex-shrink-0" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Attachment Modal */}
       <AttachmentModal
         isOpen={showAttachmentMenu}
@@ -174,7 +271,7 @@ export default function ChatInput() {
         />
       ) : (
         /* Normal Chat Input Control Bar */
-        <div className="flex items-end space-x-2">
+        <div className="flex items-end space-x-1.5 sm:space-x-2">
           {/* Attachment Button */}
           <button
             onClick={() => {
@@ -189,6 +286,22 @@ export default function ChatInput() {
             <Paperclip className="w-5 h-5" />
           </button>
 
+          {/* Text Style (Color & Size) Button */}
+          <button
+            onClick={() => {
+              sounds.playClick();
+              setShowStyleMenu(!showStyleMenu);
+            }}
+            title="টেক্সট কালার ও সাইজ পরিবর্তন"
+            className={`p-2.5 rounded-2xl transition-all duration-200 border ${
+              textColor || textSize !== 'normal' || showStyleMenu
+                ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
+                : 'text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 border-transparent'
+            }`}
+          >
+            <Palette className="w-5 h-5" />
+          </button>
+
           {/* Emoji Popover Button */}
           <button
             onClick={() => {
@@ -201,7 +314,7 @@ export default function ChatInput() {
             <Smile className="w-5 h-5" />
           </button>
 
-          {/* Smart Text Input */}
+          {/* Smart Text Input with Live Styled Preview */}
           <div className="flex-1 relative rounded-2xl bg-slate-950/70 border border-slate-800/80 focus-within:border-brand-500/80 focus-within:ring-1 focus-within:ring-brand-500/50 transition-all flex items-center shadow-inner overflow-hidden">
             <textarea
               ref={inputRef}
@@ -210,8 +323,11 @@ export default function ChatInput() {
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder={`${activeContact?.name || 'চ্যাটে'} মেসেজ লিখুন...`}
-              className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none max-h-32 custom-scrollbar font-sans"
-              style={{ minHeight: '44px' }}
+              style={{ 
+                minHeight: '44px',
+                color: textColor || undefined
+              }}
+              className={`w-full px-4 py-2.5 bg-transparent placeholder-slate-500 focus:outline-none resize-none max-h-32 custom-scrollbar font-sans ${currentSizeClass}`}
             />
           </div>
 
