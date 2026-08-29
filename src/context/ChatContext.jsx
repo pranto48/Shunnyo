@@ -26,6 +26,36 @@ export function ChatProvider({ children }) {
   const [isE2EEInitialized, setIsE2EEInitialized] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
 
+  // Admin Portal State
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [adminUser, setAdminUser] = useState(null);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+
+  const openAdminPortal = () => {
+    sounds.playClick();
+    if (isAdminLoggedIn) {
+      setShowAdminPanel(true);
+    } else {
+      setShowAdminModal(true);
+    }
+  };
+
+  const handleAdminLogin = (adminData) => {
+    setIsAdminLoggedIn(true);
+    setAdminUser(adminData);
+    setShowAdminModal(false);
+    setShowAdminPanel(true);
+    sounds.playConnected();
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminLoggedIn(false);
+    setAdminUser(null);
+    setShowAdminPanel(false);
+    sounds.playDisconnected();
+  };
+
   // Initialize Native Web Crypto RSA/AES-GCM Keys & Sync with Cloudflare D1
   useEffect(() => {
     async function initCrypto() {
@@ -254,7 +284,16 @@ export function ChatProvider({ children }) {
         isE2EEInitialized,
         showSecurityModal,
         setShowSecurityModal,
-        regenerateKeys
+        regenerateKeys,
+        isAdminLoggedIn,
+        adminUser,
+        showAdminModal,
+        setShowAdminModal,
+        showAdminPanel,
+        setShowAdminPanel,
+        openAdminPortal,
+        handleAdminLogin,
+        handleAdminLogout
       }}
     >
       {children}

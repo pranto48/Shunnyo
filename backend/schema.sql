@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_url TEXT,
     public_key_jwk TEXT NOT NULL,
     fingerprint TEXT NOT NULL,
-    status TEXT DEFAULT 'offline',
+    status TEXT DEFAULT 'online',
+    is_suspended INTEGER DEFAULT 0,
     last_seen INTEGER NOT NULL,
     created_at INTEGER NOT NULL
 );
@@ -22,10 +23,9 @@ CREATE TABLE IF NOT EXISTS e2ee_files (
     file_name TEXT,
     file_type TEXT NOT NULL,
     file_size_bytes INTEGER NOT NULL,
-    encrypted_key TEXT NOT NULL,
-    iv TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (uploader_id) REFERENCES users(id)
+    encrypted_key TEXT,
+    iv TEXT,
+    created_at INTEGER NOT NULL
 );
 
 -- 3. WebRTC Rooms & Call Session Audits
@@ -40,7 +40,28 @@ CREATE TABLE IF NOT EXISTS call_sessions (
     ended_at INTEGER
 );
 
+-- 4. Admins & Super Admins Table
+CREATE TABLE IF NOT EXISTS admins (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT DEFAULT 'super_admin',
+    last_login INTEGER,
+    created_at INTEGER NOT NULL
+);
+
+-- Seed initial super admin user (mail@arifmahmud.com)
+INSERT OR REPLACE INTO admins (id, email, password_hash, role, created_at)
+VALUES (
+    'admin_arif',
+    'mail@arifmahmud.com',
+    'Aa329093+-', -- Plaintext or SHA-256 validated
+    'super_admin',
+    1772300000000
+);
+
 -- Indexes for ultra-fast query lookups
 CREATE INDEX IF NOT EXISTS idx_users_fingerprint ON users(fingerprint);
 CREATE INDEX IF NOT EXISTS idx_files_uploader ON e2ee_files(uploader_id);
 CREATE INDEX IF NOT EXISTS idx_calls_caller ON call_sessions(caller_id);
+CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email);

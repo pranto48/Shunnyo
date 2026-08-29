@@ -15,7 +15,7 @@ import {
 import { sounds } from '../../utils/soundEffects';
 
 export default function SidebarHeader() {
-  const { currentUser } = useChat();
+  const { currentUser, openAdminPortal, setShowSecurityModal } = useChat();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [myStatus, setMyStatus] = useState(currentUser.status);
 
@@ -65,17 +65,25 @@ export default function SidebarHeader() {
 
         {/* Action icons */}
         <div className="flex items-center space-x-1">
+          {/* Admin Portal Button */}
           <button 
-            title="Start New Chat"
-            onClick={() => sounds.playClick()}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-white/5 active:scale-95 transition-all duration-200"
+            title="Admin Console (mail@arifmahmud.com)"
+            onClick={openAdminPortal}
+            className="p-2 rounded-xl text-brand-400 hover:text-white hover:bg-brand-500/20 active:scale-95 transition-all duration-200 relative group"
           >
-            <MessageSquarePlus className="w-5 h-5" />
+            <ShieldCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-brand-400 animate-ping" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-brand-400" />
           </button>
+
+          {/* E2EE Security Modal Button */}
           <button 
-            title="Settings & Privacy"
-            onClick={() => sounds.playClick()}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-white/5 active:scale-95 transition-all duration-200"
+            title="E2EE Security & Key Identity"
+            onClick={() => {
+              sounds.playClick();
+              setShowSecurityModal(true);
+            }}
+            className="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 active:scale-95 transition-all duration-200"
           >
             <Settings className="w-5 h-5" />
           </button>
