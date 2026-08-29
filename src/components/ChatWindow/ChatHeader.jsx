@@ -25,7 +25,7 @@ export default function ChatHeader() {
     isLiveConnected,
     typingUsers
   } = useChat();
-  const { startCall, callState } = useCall();
+  const { startCall, startGroupAudioCall, activeGroupCalls, callState } = useCall();
   const [showMenu, setShowMenu] = useState(false);
 
   if (!activeContact) return null;
@@ -34,7 +34,11 @@ export default function ChatHeader() {
 
   const handleAudioCall = () => {
     sounds.playClick();
-    startCall(activeContact, 'audio');
+    if (activeContact.isGroup) {
+      startGroupAudioCall(activeContact);
+    } else {
+      startCall(activeContact, 'audio');
+    }
   };
 
   const handleVideoCall = () => {
@@ -205,6 +209,22 @@ export default function ChatHeader() {
           )}
         </div>
       </div>
+
+      {/* Active Group Audio Call Notification Banner */}
+      {activeContact.isGroup && activeGroupCalls?.[activeContact.id] && callState === 'idle' && (
+        <div className="absolute -bottom-9 left-0 right-0 py-1.5 px-4 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white text-xs font-bold flex items-center justify-between z-20 shadow-xl animate-fade-in border-t border-emerald-400/30">
+          <div className="flex items-center space-x-2">
+            <Radio className="w-4 h-4 text-emerald-200 animate-pulse" />
+            <span className="truncate">📞 গ্রুপ অডিও কনফারেন্স চলছে • ২+ জন যুক্ত</span>
+          </div>
+          <button
+            onClick={handleAudioCall}
+            className="px-3 py-1 rounded-xl bg-slate-950/80 hover:bg-slate-950 text-emerald-300 hover:text-white text-[11px] font-bold border border-emerald-400/40 shadow-sm active:scale-95 transition-all"
+          >
+            যোগ দিন (Join Call)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

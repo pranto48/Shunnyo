@@ -176,6 +176,41 @@ export class SignalingRoom {
             });
             break;
 
+          // --- 6. Group Audio Conference Call Signaling ---
+          case 'group_call:start':
+            this.broadcast(webSocket, {
+              type: 'group_call:start',
+              data: {
+                groupId: data.groupId,
+                groupName: data.groupName,
+                callerId: userId,
+                callerName: username,
+                timestamp: Date.now()
+              }
+            });
+            break;
+
+          case 'group_call:join':
+            this.broadcast(webSocket, {
+              type: 'group_call:join',
+              data: {
+                groupId: data.groupId,
+                userId: userId,
+                username: username
+              }
+            });
+            break;
+
+          case 'group_call:leave':
+            this.broadcast(webSocket, {
+              type: 'group_call:leave',
+              data: {
+                groupId: data.groupId,
+                userId: userId
+              }
+            });
+            break;
+
           // --- 5. Heartbeat Ping ---
           case 'ping':
             webSocket.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
