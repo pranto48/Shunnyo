@@ -17,6 +17,7 @@ export function ChatProvider({ children }) {
   const [activeContactId, setActiveContactId] = useState(initialContacts[0]?.id || 'c-1');
   const [messages, setMessages] = useState(initialMessages);
   const [replyingToMessage, setReplyingToMessage] = useState(null);
+  const [editingMessage, setEditingMessage] = useState(null);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
@@ -181,6 +182,41 @@ export function ChatProvider({ children }) {
       });
     });
 
+    // Handle Live Message Edits
+    const unsubEdit = liveChatService.on('edit', (data) => {
+      setMessages((prev) => {
+        const conversationId = data.contactId || activeContactId;
+        const currentList = prev[conversationId] || [];
+        const updated = currentList.map((msg) =>
+          msg.id === data.messageId
+            ? { ...msg, content: data.newContent, isEdited: true, editedAt: data.editedAt }
+            : msg
+        );
+        return { ...prev, [conversationId]: updated };
+      });
+    });
+
+    // Handle Live Message Deletions
+    const unsubDelete = liveChatService.on('delete', (data) => {
+      setMessages((prev) => {
+        const conversationId = data.contactId || activeContactId;
+        const currentList = prev[conversationId] || [];
+        if (data.forEveryone) {
+          const updated = currentList.map((msg) =>
+            msg.id === data.messageId
+              ? { ...msg, isDeleted: true, content: 'এই মেসেজটি মুছে ফেলা হয়েছে', attachment: null, audioDuration: null }
+              : msg
+          );
+          return { ...prev, [conversationId]: updated };
+        } else {
+          return {
+            ...prev,
+            [conversationId]: currentList.filter((m) => m.id !== data.messageId)
+          };
+        }
+      });
+    });
+
     // Handle Presence Updates
     const unsubPresence = liveChatService.on('presence', (data) => {
       if (data.totalPeers) {
@@ -193,6 +229,8 @@ export function ChatProvider({ children }) {
       unsubMessage();
       unsubTyping();
       unsubReaction();
+      unsubEdit();
+      unsubDelete();
       unsubPresence();
     };
   }, [userKeyPair, activeContactId]);
@@ -396,12 +434,50 @@ export function ChatProvider({ children }) {
     });
   };
 
-  const deleteMessage = (messageId) => {
+  const updateMessage = (messageId, newContent) => {
     sounds.playClick();
-    setMessages((prev) => ({
-      ...prev,
-      [activeContactId]: (prev[activeContactId] || []).filter((m) => m.id !== messageId)
-    }));
+    const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // 1. Broadcast edit over WebSocket
+    liveChatService.sendEditMessage(messageId, newContent, activeContactId);
+
+    // 2. Update local state
+    setMessages((prev) => {
+      const currentList = prev[activeContactId] || [];
+      const updated = currentList.map((m) =>
+        m.id === messageId
+          ? { ...m, content: newContent, isEdited: true, editedAt: timeString }
+          : m
+      );
+      return { ...prev, [activeContactId]: updated };
+    });
+
+    setEditingMessage(null);
+  };
+
+  const deleteMessage = (messageId, forEveryone = true) => {
+    sounds.playClick();
+
+    // 1. Broadcast delete over WebSocket
+    liveChatService.sendDeleteMessage(messageId, activeContactId, forEveryone);
+
+    // 2. Update local state
+    setMessages((prev) => {
+      const currentList = prev[activeContactId] || [];
+      if (forEveryone) {
+        const updated = currentList.map((m) =>
+          m.id === messageId
+            ? { ...m, isDeleted: true, content: 'এই মেসেজটি মুছে ফেলা হয়েছে', attachment: null, audioDuration: null }
+            : m
+        );
+        return { ...prev, [activeContactId]: updated };
+      } else {
+        return {
+          ...prev,
+          [activeContactId]: currentList.filter((m) => m.id !== messageId)
+        };
+      }
+    });
   };
 
   const regenerateKeys = async () => {
@@ -436,6 +512,9 @@ export function ChatProvider({ children }) {
         selectContact,
         replyingToMessage,
         setReplyingToMessage,
+        editingMessage,
+        setEditingMessage,
+        updateMessage,
         sendMessage,
         sendLiveTyping,
         addReaction,

@@ -117,6 +117,20 @@ class LiveChatService {
   }
 
   /**
+   * Broadcast message edit
+   */
+  sendEditMessage(messageId, newContent, contactId) {
+    this.sendPayload('chat:edit', { messageId, newContent, contactId });
+  }
+
+  /**
+   * Broadcast message delete
+   */
+  sendDeleteMessage(messageId, contactId, forEveryone = true) {
+    this.sendPayload('chat:delete', { messageId, contactId, forEveryone });
+  }
+
+  /**
    * Internal helper to send JSON message
    */
   sendPayload(type, data) {

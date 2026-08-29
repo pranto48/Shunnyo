@@ -108,6 +108,31 @@ export class SignalingRoom {
             });
             break;
 
+          // --- 4. Live Message Edit ---
+          case 'chat:edit':
+            this.broadcast(webSocket, {
+              type: 'chat:edit',
+              data: {
+                messageId: data.messageId,
+                newContent: data.newContent,
+                contactId: data.contactId,
+                editedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            });
+            break;
+
+          // --- 5. Live Message Delete ---
+          case 'chat:delete':
+            this.broadcast(webSocket, {
+              type: 'chat:delete',
+              data: {
+                messageId: data.messageId,
+                contactId: data.contactId,
+                forEveryone: data.forEveryone
+              }
+            });
+            break;
+
           // --- 4. WebRTC P2P Call Signaling ---
           case 'offer':
             this.broadcast(webSocket, {
