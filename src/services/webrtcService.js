@@ -20,6 +20,9 @@ export const RTC_CONFIG = {
   iceCandidatePoolSize: 10
 };
 
+export const CLOUDFLARE_BACKEND_URL = 'https://shunnyo-backend.mail-cde.workers.dev';
+export const CLOUDFLARE_WS_ENDPOINT = 'wss://shunnyo-backend.mail-cde.workers.dev/ws/signaling';
+
 /**
  * WebSocket Signaling Client Placeholder
  * Supports real ws:// or wss:// endpoints + built-in fallback event dispatcher
@@ -401,4 +404,4 @@ export class WebRTCService {
 }
 
 // Global Singleton Instance
-export const webrtcService = new WebRTCService();
+export const webrtcService = new WebRTCService(CLOUDFLARE_WS_ENDPOINT);

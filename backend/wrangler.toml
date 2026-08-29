@@ -7,9 +7,9 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "shunnyo-db"
-database_id = "00000000-0000-0000-0000-000000000000" # Replace with actual D1 database UUID on cloudflare
+database_id = "3aa8d80b-f709-4369-8543-802662aba6a5"
 
-# 2. Cloudflare R2 Storage Bucket Binding (E2EE Encrypted Files & Voice Notes)
+# 2. Cloudflare R2 Storage Bucket Binding (E2EE Encrypted Files & Media)
 [[r2_buckets]]
 binding = "STORAGE_BUCKET"
 bucket_name = "shunnyo-e2ee-vault"
@@ -20,13 +20,13 @@ bindings = [
   { name = "SIGNALING_ROOM", class_name = "SignalingRoom" }
 ]
 
+# Durable Objects migration for SQLite storage (Free tier & Standard tier compatible)
 [[migrations]]
 tag = "v1"
-new_classes = ["SignalingRoom"]
+new_sqlite_classes = ["SignalingRoom"]
 
 # 4. Environment Variables
 [vars]
 ENVIRONMENT = "production"
 APP_NAME = "Shunnyo Cloudflare Backend"
 CORS_ORIGIN = "*"
-R2_PUBLIC_ENDPOINT = "https://vault.shunnyo.io"
