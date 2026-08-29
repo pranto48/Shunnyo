@@ -231,6 +231,8 @@ export function ChatProvider({ children }) {
         contacts,
         activeContact,
         activeContactId,
+        messages,
+        setMessages,
         activeMessages,
         filteredContacts,
         filter,

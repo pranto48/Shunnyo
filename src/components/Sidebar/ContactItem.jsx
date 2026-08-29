@@ -6,11 +6,10 @@ import { Pin, Users, CheckCheck, Check, Volume2, Image as ImageIcon } from 'luci
 import { sounds } from '../../utils/soundEffects';
 
 export default function ContactItem({ contact }) {
-  const { activeContactId, selectContact, activeMessages, messages } = useChat();
+  const { activeContactId, selectContact, messages = {} } = useChat();
   const isActive = activeContactId === contact.id;
 
-  // Get last message for this contact
-  const contactMessages = messages[contact.id] || [];
+  const contactMessages = messages?.[contact.id] || [];
   const lastMsg = contactMessages[contactMessages.length - 1];
 
   const handleClick = () => {
