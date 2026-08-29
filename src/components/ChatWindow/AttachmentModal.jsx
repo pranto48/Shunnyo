@@ -3,16 +3,17 @@ import {
   Image as ImageIcon, 
   Video, 
   FileText, 
-  Music, 
+  MapPin, 
   UploadCloud, 
   X, 
   Loader2,
   Sparkles,
-  Film
+  Navigation
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 import { cloudflareApi } from '../../services/cloudflareApi';
 import { useChat } from '../../context/ChatContext';
+import LocationModal from './LocationModal';
 
 export default function AttachmentModal({ isOpen, onClose, onSelectAttachment }) {
   const { currentUser } = useChat();
@@ -20,8 +21,9 @@ export default function AttachmentModal({ isOpen, onClose, onSelectAttachment })
   const [fileFilter, setFileFilter] = useState('*/*');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen && !isLocationModalOpen) return null;
 
   const triggerPicker = (acceptTypes) => {
     setFileFilter(acceptTypes);
@@ -39,12 +41,10 @@ export default function AttachmentModal({ isOpen, onClose, onSelectAttachment })
       setUploadProgress(20);
       sounds.playClick();
 
-      // Read file binary
       const arrayBuffer = await file.arrayBuffer();
       const blob = new Blob([arrayBuffer], { type: file.type || 'application/octet-stream' });
       setUploadProgress(50);
 
-      // Upload E2EE payload directly to Cloudflare R2 bucket
       const result = await cloudflareApi.uploadEncryptedFile(
         blob,
         file.name,
@@ -80,7 +80,6 @@ export default function AttachmentModal({ isOpen, onClose, onSelectAttachment })
       sounds.playMessageSent();
     } catch (err) {
       console.warn('[Attachment] Upload fallback:', err);
-      // Fallback local preview
       const localUrl = URL.createObjectURL(file);
       onSelectAttachment({
         type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'document',
@@ -96,6 +95,12 @@ export default function AttachmentModal({ isOpen, onClose, onSelectAttachment })
     }
   };
 
+  const handleLocationSelected = (locationData) => {
+    onSelectAttachment(locationData);
+    setIsLocationModalOpen(false);
+    onClose();
+  };
+
   const options = [
     {
       id: 'opt-photo',
@@ -103,7 +108,7 @@ export default function AttachmentModal({ isOpen, onClose, onSelectAttachment })
       subtitle: 'JPEG, PNG, WEBP, GIF',
       icon: ImageIcon,
       color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-      accept: 'image/*'
+      action: () => triggerPicker('image/*')
     },
     {
       id: 'opt-video',
@@ -111,7 +116,7 @@ export default function AttachmentModal({ isOpen, onClose, onSelectAttachment })
       subtitle: 'MP4, WebM, MOV',
       icon: Video,
       color: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
-      accept: 'video/*'
+      action: () => triggerPicker('video/*')
     },
     {
       id: 'opt-doc',
@@ -119,75 +124,97 @@ export default function AttachmentModal({ isOpen, onClose, onSelectAttachment })
       subtitle: 'PDF, DOCX, ZIP, Code',
       icon: FileText,
       color: 'bg-brand-500/15 text-brand-400 border-brand-500/30',
-      accept: '.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt,.json,.csv,.tar,.gz'
+      action: () => triggerPicker('.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt,.json,.csv,.tar,.gz')
+    },
+    {
+      id: 'opt-location',
+      title: 'অবস্থান ও লাইভ লোকেশন (Share Location)',
+      subtitle: 'রিয়েল-টাইম GPS ম্যাপ ও ট্র্যাকিং',
+      icon: MapPin,
+      color: 'bg-teal-500/15 text-teal-400 border-teal-500/30',
+      action: () => {
+        sounds.playClick();
+        setIsLocationModalOpen(true);
+      }
     }
   ];
 
   return (
     <>
-      <div className="fixed inset-0 z-30" onClick={onClose} />
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={onClose} />
 
-      {/* Hidden input configured dynamically */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={fileFilter}
-        className="hidden"
-        onChange={handleFileUpload}
-      />
+          {/* Hidden input configured dynamically */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={fileFilter}
+            className="hidden"
+            onChange={handleFileUpload}
+          />
 
-      <div className="absolute bottom-20 left-4 sm:left-6 w-80 rounded-3xl glass-dropdown p-3 shadow-2xl z-40 border border-slate-700/80 animate-scale-in">
-        {/* Header */}
-        <div className="flex items-center justify-between px-2 pb-2 mb-2 border-b border-slate-800 text-xs font-semibold text-slate-300">
-          <div className="flex items-center space-x-1.5">
-            <UploadCloud className="w-4 h-4 text-brand-400" />
-            <span>ফাইল ও মিডিয়া শেয়ার (Cloudflare R2)</span>
-          </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 p-1">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {isUploading ? (
-          <div className="p-6 flex flex-col items-center justify-center space-y-3 text-slate-300 text-xs font-medium">
-            <Loader2 className="w-7 h-7 text-brand-400 animate-spin" />
-            <span>R2 বাকেটে এনক্রিপ্ট হয়ে আপলোড হচ্ছে ({uploadProgress}%)...</span>
-            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-brand-500 to-cyan-400 h-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              />
+          <div className="absolute bottom-20 left-4 sm:left-6 w-80 rounded-3xl glass-dropdown p-3 shadow-2xl z-40 border border-slate-700/80 animate-scale-in">
+            {/* Header */}
+            <div className="flex items-center justify-between px-2 pb-2 mb-2 border-b border-slate-800 text-xs font-semibold text-slate-300">
+              <div className="flex items-center space-x-1.5">
+                <UploadCloud className="w-4 h-4 text-brand-400" />
+                <span>ফাইল ও লোকেশন শেয়ার</span>
+              </div>
+              <button onClick={onClose} className="text-slate-500 hover:text-slate-300 p-1">
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            {options.map((opt) => {
-              const Icon = opt.icon;
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => triggerPicker(opt.accept)}
-                  className="w-full flex items-center space-x-3 p-2.5 rounded-2xl hover:bg-white/5 transition-all text-left group border border-transparent hover:border-slate-700/60"
-                >
+
+            {isUploading ? (
+              <div className="p-6 flex flex-col items-center justify-center space-y-3 text-slate-300 text-xs font-medium">
+                <Loader2 className="w-7 h-7 text-brand-400 animate-spin" />
+                <span>R2 বাকেটে এনক্রিপ্ট হয়ে আপলোড হচ্ছে ({uploadProgress}%)...</span>
+                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center border ${opt.color} group-hover:scale-105 transition-transform flex-shrink-0`}
-                  >
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold text-slate-200 group-hover:text-white truncate">
-                      {opt.title}
-                    </div>
-                    <div className="text-[11px] text-slate-500 truncate">
-                      {opt.subtitle}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+                    className="bg-gradient-to-r from-brand-500 to-cyan-400 h-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {options.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={opt.action}
+                      className="w-full flex items-center space-x-3 p-2.5 rounded-2xl hover:bg-white/5 transition-all text-left group border border-transparent hover:border-slate-700/60"
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center border ${opt.color} group-hover:scale-105 transition-transform flex-shrink-0`}
+                      >
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-slate-200 group-hover:text-white truncate">
+                          {opt.title}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">
+                          {opt.subtitle}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+      {/* Location Modal */}
+      <LocationModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        onShareLocation={handleLocationSelected}
+      />
     </>
   );
 }

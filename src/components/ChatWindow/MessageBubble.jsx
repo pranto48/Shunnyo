@@ -14,7 +14,11 @@ import {
   X,
   ExternalLink,
   ShieldCheck,
-  Maximize2
+  Maximize2,
+  MapPin,
+  Navigation,
+  Radio,
+  Compass
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
@@ -195,7 +199,71 @@ export default function MessageBubble({ message, isGroup = false }) {
             </div>
           )}
 
-          {/* 4. Voice Note Audio Waveform */}
+          {/* 4. GPS & Live Location Sharing Card */}
+          {attachment && attachment.type === 'location' && (
+            <div className="mb-2 -mx-2 -mt-1 rounded-2xl overflow-hidden bg-slate-950/80 border border-slate-800 shadow-xl">
+              {/* Top Mini Map Banner */}
+              <div className="h-32 w-full bg-gradient-to-br from-emerald-950/70 via-slate-900 to-slate-950 relative flex items-center justify-center overflow-hidden border-b border-slate-800/80">
+                {/* Grid Lines */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#10b98115_1px,transparent_1px),linear-gradient(to_bottom,#10b98115_1px,transparent_1px)] bg-[size:16px_16px]" />
+                
+                {/* Pulsing Pin Center */}
+                <div className="relative flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/30 border border-emerald-500/60 flex items-center justify-center text-emerald-400 shadow-glow-emerald z-10">
+                    <MapPin className="w-5 h-5 fill-emerald-400" />
+                  </div>
+                  <div className="absolute w-20 h-20 rounded-full border border-emerald-500/40 animate-ping opacity-40 pointer-events-none" />
+                  <div className="absolute w-32 h-32 rounded-full border border-cyan-500/30 animate-ping opacity-20 pointer-events-none" style={{ animationDelay: '0.6s' }} />
+                </div>
+
+                {/* Live Badge */}
+                {attachment.isLive && (
+                  <div className="absolute top-2 left-2 flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold animate-pulse">
+                    <Radio className="w-3 h-3 text-rose-400 animate-spin" />
+                    <span>লাইভ লোকেশন ({attachment.liveDuration || '15m'})</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom Address & Map Link Actions */}
+              <div className="p-3 space-y-2">
+                <div>
+                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Navigation className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{attachment.isLive ? 'রিয়েল-টাইম লাইভ লোকেশন' : 'বর্তমান অবস্থান (Shared Location)'}</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-300 font-mono mt-0.5">
+                    {attachment.address || `Lat: ${attachment.latitude?.toFixed(4)}, Long: ${attachment.longitude?.toFixed(4)}`}
+                  </p>
+                </div>
+
+                <div className="pt-1 flex items-center space-x-2">
+                  <a
+                    href={attachment.externalMapUrl || `https://www.google.com/maps?q=${attachment.latitude},${attachment.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-1.5 px-2.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold flex items-center justify-center space-x-1.5 transition-all active:scale-95"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>গুগল ম্যাপে দেখুন</span>
+                  </a>
+
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${attachment.latitude},${attachment.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-1.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold flex items-center justify-center space-x-1 transition-all active:scale-95"
+                    title="ডাইরেকশন পান"
+                  >
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>ডাইরেকশন</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 5. Voice Note Audio Waveform */}
           {(message.audioDuration || (attachment && attachment.type === 'audio')) && (
             <div className="flex items-center space-x-3 py-1 min-w-[200px] sm:min-w-[240px]">
               <button
