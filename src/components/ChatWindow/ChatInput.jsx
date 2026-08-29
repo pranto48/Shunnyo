@@ -12,12 +12,13 @@ import {
   Mic, 
   Image as ImageIcon, 
   X, 
-  Sparkles
+  Sparkles,
+  Reply
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
 export default function ChatInput() {
-  const { sendMessage, activeContact, sendLiveTyping } = useChat();
+  const { sendMessage, activeContact, sendLiveTyping, replyingToMessage, setReplyingToMessage } = useChat();
   const { startCall, callState } = useCall();
 
   const [text, setText] = useState('');
@@ -93,6 +94,30 @@ export default function ChatInput() {
 
   return (
     <div className="p-3 sm:p-4 bg-background-surface/90 border-t border-slate-800/80 backdrop-blur-xl relative z-20 safe-bottom">
+      {/* Replying To Message Banner */}
+      {replyingToMessage && (
+        <div className="mb-2 flex items-center justify-between p-2.5 rounded-xl bg-slate-900/95 border-l-4 border-l-brand-500 border border-slate-800 text-xs animate-slide-up shadow-lg">
+          <div className="flex items-center space-x-2.5 truncate min-w-0 pr-2">
+            <Reply className="w-4 h-4 text-brand-400 flex-shrink-0" />
+            <div className="truncate min-w-0">
+              <span className="font-bold text-brand-300 block text-[11px]">
+                রিপ্লাই দিচ্ছেন: {replyingToMessage.senderName || 'ব্যবহারকারী'}
+              </span>
+              <span className="text-slate-300 text-xs truncate block opacity-90">
+                {replyingToMessage.content || (replyingToMessage.attachment ? `[${replyingToMessage.attachment.type || 'Attachment'}]` : 'মেসেজ')}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setReplyingToMessage(null)}
+            className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
+            title="রিপ্লাই বাতিল করুন"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Pending Attachment Preview Bar */}
       {pendingAttachment && (
         <div className="mb-2 flex items-center justify-between p-2 rounded-xl bg-slate-900/90 border border-brand-500/40 text-xs animate-slide-up">

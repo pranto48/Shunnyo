@@ -14,8 +14,9 @@ const ChatContext = createContext();
 
 export function ChatProvider({ children }) {
   const [contacts, setContacts] = useState(initialContacts);
-  const [activeContactId, setActiveContactId] = useState('c-1');
+  const [activeContactId, setActiveContactId] = useState(initialContacts[0]?.id || 'c-1');
   const [messages, setMessages] = useState(initialMessages);
+  const [replyingToMessage, setReplyingToMessage] = useState(null);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
@@ -233,14 +234,15 @@ export function ChatProvider({ children }) {
   };
 
   /**
-   * Send Live Message (Local State + WebSocket Broadcast + E2EE Encryption)
+   * Send Message (with optional attachment and reply-to metadata)
    */
-  const sendMessage = async (text, attachment = null) => {
+  const sendMessage = async (text, attachment = null, explicitReplyTo = null) => {
     if (!text?.trim() && !attachment) return;
 
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const newMessageId = `m-${Date.now()}`;
+    const activeReply = explicitReplyTo || replyingToMessage;
 
     // Generate E2EE envelope
     let encryptedEnvelope = null;
@@ -251,6 +253,13 @@ export function ChatProvider({ children }) {
         console.debug('E2EE envelope generation:', err);
       }
     }
+
+    const replyMetadata = activeReply ? {
+      id: activeReply.id,
+      senderName: activeReply.senderName || (activeReply.senderId === currentUser.id ? 'আপনি' : 'User'),
+      content: activeReply.content || (activeReply.attachment ? `[${activeReply.attachment.type || 'Attachment'}]` : 'Message'),
+      attachmentType: activeReply.attachment?.type || null
+    } : null;
 
     const newMessage = {
       id: newMessageId,
@@ -264,10 +273,12 @@ export function ChatProvider({ children }) {
       isEncrypted: true,
       attachment,
       encryptedEnvelope,
-      reactions: []
+      reactions: [],
+      replyTo: replyMetadata
     };
 
     sounds.playMessageSent();
+    setReplyingToMessage(null);
 
     // 1. Update local conversation state immediately
     setMessages((prev) => ({
@@ -283,7 +294,8 @@ export function ChatProvider({ children }) {
       content: text,
       attachment,
       encryptedEnvelope,
-      timestamp: timeString
+      timestamp: timeString,
+      replyTo: replyMetadata
     });
 
     // 3. Mark delivery receipts
@@ -422,6 +434,8 @@ export function ChatProvider({ children }) {
         activeTab,
         setActiveTab,
         selectContact,
+        replyingToMessage,
+        setReplyingToMessage,
         sendMessage,
         sendLiveTyping,
         addReaction,

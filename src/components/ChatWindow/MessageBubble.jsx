@@ -15,14 +15,15 @@ import {
   Navigation, 
   Radio, 
   Compass,
-  Plus
+  Plus,
+  Reply
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 import VoiceMessagePlayer from './VoiceMessagePlayer';
 import EmojiPicker from './EmojiPicker';
 
 export default function MessageBubble({ message, isGroup = false }) {
-  const { currentUser, addReaction, deleteMessage } = useChat();
+  const { currentUser, addReaction, deleteMessage, setReplyingToMessage } = useChat();
   const isSentByMe = message.senderId === currentUser.id;
 
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -120,6 +121,18 @@ export default function MessageBubble({ message, isGroup = false }) {
             )}
           </div>
 
+          {/* Reply Button */}
+          <button
+            onClick={() => {
+              sounds.playClick();
+              setReplyingToMessage(message);
+            }}
+            className="p-1 text-slate-400 hover:text-brand-400 transition-colors"
+            title="Reply to message"
+          >
+            <Reply className="w-3.5 h-3.5" />
+          </button>
+
           {/* Delete Message */}
           <button
             onClick={() => deleteMessage(message.id)}
@@ -148,6 +161,18 @@ export default function MessageBubble({ message, isGroup = false }) {
               : 'bg-background-card/90 text-slate-100 rounded-bl-sm border border-slate-700/60 backdrop-blur-md'
           }`}
         >
+          {/* Quoted Replying Header */}
+          {message.replyTo && (
+            <div className="mb-2 -mx-1 p-2 rounded-xl bg-black/25 border-l-2 border-accent-cyan text-xs text-left truncate">
+              <span className="font-bold text-accent-cyan block text-[10px]">
+                {message.replyTo.senderName}
+              </span>
+              <span className="text-slate-200/90 text-[11px] truncate block">
+                {message.replyTo.content}
+              </span>
+            </div>
+          )}
+
           {/* 1. Image Attachment Preview */}
           {attachment && attachment.type === 'image' && (
             <div className="mb-2 -mx-2 -mt-1 rounded-xl overflow-hidden relative group/img bg-slate-950/50">
