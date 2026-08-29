@@ -2,23 +2,21 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from '../../context/ChatContext';
 import { useCall } from '../../context/CallContext';
 import AttachmentModal from './AttachmentModal';
+import VoiceRecorderBar from './VoiceRecorderBar';
+import { audioRecorderEngine } from '../../utils/audioRecorder';
 import { 
   Paperclip, 
   Send, 
   Smile, 
   Mic, 
-  Square, 
   Image as ImageIcon, 
   X, 
-  Phone, 
-  Video,
-  Sparkles,
-  Radio
+  Sparkles
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
 export default function ChatInput() {
-  const { sendMessage, activeContact, sendLiveTyping, isLiveConnected } = useChat();
+  const { sendMessage, activeContact, sendLiveTyping } = useChat();
   const { startCall, callState } = useCall();
 
   const [text, setText] = useState('');
@@ -26,10 +24,8 @@ export default function ChatInput() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [pendingAttachment, setPendingAttachment] = useState(null);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
 
   const inputRef = useRef(null);
-  const recordTimerRef = useRef(null);
   const typingTimerRef = useRef(null);
 
   const popularEmojis = [
@@ -37,25 +33,6 @@ export default function ChatInput() {
     '✨', '💯', '🙌', '😎', '💡', '⚡', '🤖', '🔒'
   ];
 
-  // Voice recording timer
-  useEffect(() => {
-    if (isRecordingVoice) {
-      setRecordingTime(0);
-      recordTimerRef.current = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
-      }, 1000);
-    } else {
-      if (recordTimerRef.current) {
-        clearInterval(recordTimerRef.current);
-        recordTimerRef.current = null;
-      }
-    }
-    return () => {
-      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
-    };
-  }, [isRecordingVoice]);
-
-  // Handle typing debounce broadcast
   const handleInputChange = (e) => {
     const val = e.target.value;
     setText(val);
@@ -95,25 +72,22 @@ export default function ChatInput() {
     setText((prev) => prev + emoji);
   };
 
-  const toggleVoiceRecording = () => {
+  const startVoiceRecording = async () => {
     sounds.playClick();
-    if (isRecordingVoice) {
-      const durationStr = `0:${recordingTime < 10 ? '0' + recordingTime : recordingTime}`;
-      setIsRecordingVoice(false);
-      sendMessage('', {
-        type: 'audio',
-        audioDuration: recordingTime > 0 ? durationStr : '0:07',
-        caption: 'Voice Note'
-      });
-    } else {
+    try {
+      await audioRecorderEngine.start();
+      setIsRecordingVoice(true);
+      sounds.playMessageSent();
+    } catch (err) {
+      console.warn('Microphone permission denied:', err);
+      // Fallback: Show voice recording simulation
       setIsRecordingVoice(true);
     }
   };
 
-  const cancelRecording = () => {
-    sounds.playClick();
+  const handleSendVoiceNote = (audioAttachment) => {
     setIsRecordingVoice(false);
-    setRecordingTime(0);
+    sendMessage('', audioAttachment);
   };
 
   return (
@@ -126,7 +100,7 @@ export default function ChatInput() {
               <ImageIcon className="w-4 h-4" />
             </div>
             <div className="truncate">
-              <span className="font-semibold text-white truncate block">{pendingAttachment.name || pendingAttachment.caption}</span>
+              <span className="font-semibold text-white truncate block">{pendingAttachment.name || pendingAttachment.caption || 'Attachment'}</span>
               <span className="text-[10px] text-brand-300 font-mono">Cloudflare R2 E2EE Attached</span>
             </div>
           </div>
@@ -175,53 +149,43 @@ export default function ChatInput() {
         onSelectAttachment={(att) => setPendingAttachment(att)}
       />
 
-      {/* Main Input Control Bar */}
-      <div className="flex items-end space-x-2">
-        {/* Attachment Button */}
-        <button
-          onClick={() => {
-            sounds.playClick();
-            setShowAttachmentMenu(!showAttachmentMenu);
-          }}
-          title="Attach Encrypted File (R2)"
-          className={`p-2.5 rounded-2xl text-slate-400 hover:text-brand-300 hover:bg-brand-500/10 active:scale-95 transition-all duration-200 border ${
-            showAttachmentMenu ? 'bg-brand-500/20 border-brand-500/40 text-brand-300' : 'border-transparent'
-          }`}
-        >
-          <Paperclip className="w-5 h-5" />
-        </button>
+      {/* When Active Voice Recording is Running: Messenger Voice Bar */}
+      {isRecordingVoice ? (
+        <VoiceRecorderBar
+          onSendAudio={handleSendVoiceNote}
+          onCancel={() => setIsRecordingVoice(false)}
+        />
+      ) : (
+        /* Normal Chat Input Control Bar */
+        <div className="flex items-end space-x-2">
+          {/* Attachment Button */}
+          <button
+            onClick={() => {
+              sounds.playClick();
+              setShowAttachmentMenu(!showAttachmentMenu);
+            }}
+            title="Attach Files / Photos / Location (R2)"
+            className={`p-2.5 rounded-2xl text-slate-400 hover:text-brand-300 hover:bg-brand-500/10 active:scale-95 transition-all duration-200 border ${
+              showAttachmentMenu ? 'bg-brand-500/20 border-brand-500/40 text-brand-300' : 'border-transparent'
+            }`}
+          >
+            <Paperclip className="w-5 h-5" />
+          </button>
 
-        {/* Emoji Popover Button */}
-        <button
-          onClick={() => {
-            sounds.playClick();
-            setShowEmojiPicker(!showEmojiPicker);
-          }}
-          title="Insert Emoji"
-          className="p-2.5 rounded-2xl text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 active:scale-95 transition-all duration-200"
-        >
-          <Smile className="w-5 h-5" />
-        </button>
+          {/* Emoji Popover Button */}
+          <button
+            onClick={() => {
+              sounds.playClick();
+              setShowEmojiPicker(!showEmojiPicker);
+            }}
+            title="Insert Emoji"
+            className="p-2.5 rounded-2xl text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 active:scale-95 transition-all duration-200"
+          >
+            <Smile className="w-5 h-5" />
+          </button>
 
-        {/* Smart Text Input or Voice Recording Bar */}
-        <div className="flex-1 relative rounded-2xl bg-slate-950/70 border border-slate-800/80 focus-within:border-brand-500/80 focus-within:ring-1 focus-within:ring-brand-500/50 transition-all flex items-center shadow-inner overflow-hidden">
-          {isRecordingVoice ? (
-            <div className="w-full flex items-center justify-between px-4 py-2.5 bg-rose-950/40 border-rose-500/30 text-rose-300 animate-pulse">
-              <div className="flex items-center space-x-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                <span className="text-xs font-semibold">ভয়েস রেকর্ড হচ্ছে...</span>
-                <span className="text-xs font-mono font-bold text-white ml-2">
-                  0:{recordingTime < 10 ? '0' + recordingTime : recordingTime}
-                </span>
-              </div>
-              <button
-                onClick={cancelRecording}
-                className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/10 transition-colors"
-              >
-                বাতিল করুন
-              </button>
-            </div>
-          ) : (
+          {/* Smart Text Input */}
+          <div className="flex-1 relative rounded-2xl bg-slate-950/70 border border-slate-800/80 focus-within:border-brand-500/80 focus-within:ring-1 focus-within:ring-brand-500/50 transition-all flex items-center shadow-inner overflow-hidden">
             <textarea
               ref={inputRef}
               rows={1}
@@ -232,39 +196,35 @@ export default function ChatInput() {
               className="w-full px-4 py-2.5 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none max-h-32 custom-scrollbar font-sans"
               style={{ minHeight: '44px' }}
             />
-          )}
+          </div>
+
+          {/* Messenger Style Audio Voice Record Button */}
+          <button
+            onClick={startVoiceRecording}
+            title="ভয়েস মেসেজ রেকর্ড করুন (Record Voice Message)"
+            className="p-2.5 rounded-2xl text-slate-400 hover:text-purple-300 hover:bg-purple-500/15 border border-transparent hover:border-purple-500/30 transition-all duration-200 active:scale-95"
+          >
+            <Mic className="w-5 h-5" />
+          </button>
+
+          {/* Send Action Button */}
+          <button
+            onClick={() => {
+              sounds.playClick();
+              handleSend();
+            }}
+            disabled={!text.trim() && !pendingAttachment}
+            title="Send Encrypted Message (Enter)"
+            className={`p-2.5 rounded-2xl transition-all duration-200 flex items-center justify-center ${
+              text.trim() || pendingAttachment
+                ? 'bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-glow-brand active:scale-95'
+                : 'bg-slate-800/60 text-slate-600 cursor-not-allowed opacity-50'
+            }`}
+          >
+            <Send className="w-5 h-5" />
+          </button>
         </div>
-
-        {/* Voice Note Button */}
-        <button
-          onClick={toggleVoiceRecording}
-          title={isRecordingVoice ? 'ভয়েস পাঠানো সম্পন্ন করুন' : 'ভয়েস মেসেজ রেকর্ড করুন'}
-          className={`p-2.5 rounded-2xl transition-all duration-200 border active:scale-95 ${
-            isRecordingVoice
-              ? 'bg-rose-600 text-white border-rose-500 shadow-glow-rose scale-105'
-              : 'text-slate-400 hover:text-purple-300 hover:bg-purple-500/10 border-transparent'
-          }`}
-        >
-          {isRecordingVoice ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-        </button>
-
-        {/* Send Action Button */}
-        <button
-          onClick={() => {
-            sounds.playClick();
-            handleSend();
-          }}
-          disabled={!text.trim() && !pendingAttachment}
-          title="Send Encrypted Message (Enter)"
-          className={`p-2.5 rounded-2xl transition-all duration-200 flex items-center justify-center ${
-            text.trim() || pendingAttachment
-              ? 'bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-glow-brand active:scale-95'
-              : 'bg-slate-800/60 text-slate-600 cursor-not-allowed opacity-50'
-          }`}
-        >
-          <Send className="w-5 h-5" />
-        </button>
-      </div>
+      )}
     </div>
   );
 }

@@ -3,39 +3,30 @@ import { useChat } from '../../context/ChatContext';
 import { 
   CheckCheck, 
   Check, 
-  Play, 
-  Pause, 
   Smile, 
   Trash2, 
-  Download,
-  FileText,
-  Video,
-  Eye,
-  X,
-  ExternalLink,
-  ShieldCheck,
-  Maximize2,
-  MapPin,
-  Navigation,
-  Radio,
-  Compass
+  Download, 
+  FileText, 
+  Video, 
+  X, 
+  ExternalLink, 
+  Maximize2, 
+  MapPin, 
+  Navigation, 
+  Radio, 
+  Compass 
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
+import VoiceMessagePlayer from './VoiceMessagePlayer';
 
 export default function MessageBubble({ message, isGroup = false }) {
   const { currentUser, addReaction, deleteMessage } = useChat();
   const isSentByMe = message.senderId === currentUser.id;
 
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [isMediaZoomed, setIsMediaZoomed] = useState(false);
 
   const availableReactions = ['❤️', '👍', '🔥', '😂', '😮', '🚀'];
-
-  const toggleAudioPlay = () => {
-    sounds.playClick();
-    setIsPlayingAudio(!isPlayingAudio);
-  };
 
   const handleReact = (emoji) => {
     sounds.playClick();
@@ -52,6 +43,7 @@ export default function MessageBubble({ message, isGroup = false }) {
   };
 
   const attachment = message.attachment;
+  const isAudio = attachment?.type === 'audio' || message.audioDuration;
 
   return (
     <div
@@ -202,12 +194,9 @@ export default function MessageBubble({ message, isGroup = false }) {
           {/* 4. GPS & Live Location Sharing Card */}
           {attachment && attachment.type === 'location' && (
             <div className="mb-2 -mx-2 -mt-1 rounded-2xl overflow-hidden bg-slate-950/80 border border-slate-800 shadow-xl">
-              {/* Top Mini Map Banner */}
               <div className="h-32 w-full bg-gradient-to-br from-emerald-950/70 via-slate-900 to-slate-950 relative flex items-center justify-center overflow-hidden border-b border-slate-800/80">
-                {/* Grid Lines */}
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#10b98115_1px,transparent_1px),linear-gradient(to_bottom,#10b98115_1px,transparent_1px)] bg-[size:16px_16px]" />
                 
-                {/* Pulsing Pin Center */}
                 <div className="relative flex items-center justify-center">
                   <div className="w-10 h-10 rounded-full bg-emerald-500/30 border border-emerald-500/60 flex items-center justify-center text-emerald-400 shadow-glow-emerald z-10">
                     <MapPin className="w-5 h-5 fill-emerald-400" />
@@ -216,7 +205,6 @@ export default function MessageBubble({ message, isGroup = false }) {
                   <div className="absolute w-32 h-32 rounded-full border border-cyan-500/30 animate-ping opacity-20 pointer-events-none" style={{ animationDelay: '0.6s' }} />
                 </div>
 
-                {/* Live Badge */}
                 {attachment.isLive && (
                   <div className="absolute top-2 left-2 flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold animate-pulse">
                     <Radio className="w-3 h-3 text-rose-400 animate-spin" />
@@ -225,7 +213,6 @@ export default function MessageBubble({ message, isGroup = false }) {
                 )}
               </div>
 
-              {/* Bottom Address & Map Link Actions */}
               <div className="p-3 space-y-2">
                 <div>
                   <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
@@ -263,46 +250,13 @@ export default function MessageBubble({ message, isGroup = false }) {
             </div>
           )}
 
-          {/* 5. Voice Note Audio Waveform */}
-          {(message.audioDuration || (attachment && attachment.type === 'audio')) && (
-            <div className="flex items-center space-x-3 py-1 min-w-[200px] sm:min-w-[240px]">
-              <button
-                onClick={toggleAudioPlay}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                  isSentByMe
-                    ? 'bg-white text-brand-600 shadow-md hover:scale-105'
-                    : 'bg-brand-500 text-white shadow-glow-brand hover:scale-105'
-                }`}
-              >
-                {isPlayingAudio ? (
-                  <Pause className="w-4 h-4 fill-current" />
-                ) : (
-                  <Play className="w-4 h-4 fill-current ml-0.5" />
-                )}
-              </button>
-
-              <div className="flex-1 flex items-center gap-0.5 h-6">
-                {[40, 65, 85, 30, 90, 50, 75, 100, 45, 60, 80, 35, 70, 95, 55, 40, 85, 60, 30].map(
-                  (height, i) => (
-                    <div
-                      key={i}
-                      style={{ height: `${height}%` }}
-                      className={`w-1 rounded-full transition-all duration-300 ${
-                        isPlayingAudio
-                          ? 'bg-accent-emerald animate-pulse'
-                          : isSentByMe
-                          ? 'bg-white/60'
-                          : 'bg-slate-500'
-                      }`}
-                    />
-                  )
-                )}
-              </div>
-
-              <span className="text-[11px] font-mono opacity-80 whitespace-nowrap">
-                {message.audioDuration || '0:15'}
-              </span>
-            </div>
+          {/* 5. Messenger-Style Native Voice Note Audio Player */}
+          {isAudio && (
+            <VoiceMessagePlayer
+              audioUrl={attachment?.url || attachment?.localUrl}
+              duration={attachment?.duration || message.audioDuration || '0:15'}
+              isSentByMe={isSentByMe}
+            />
           )}
 
           {/* Text Content */}
