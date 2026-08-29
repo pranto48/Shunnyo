@@ -3,7 +3,12 @@
  * Endpoints:
  * - Admin Authentication: POST /api/admin/login
  * - Admin Dashboard Metrics: GET /api/admin/metrics
- * - User Management: GET /api/admin/users, POST /api/admin/users/:id/toggle-status
+ * - User Management: 
+ *     GET /api/admin/users
+ *     POST /api/admin/users/create
+ *     POST /api/admin/users/:id/update
+ *     POST /api/admin/users/:id/delete
+ *     POST /api/admin/users/:id/toggle-status
  * - R2 Storage Vault: GET /api/admin/storage, POST /api/storage/presigned-url, PUT /api/storage/upload/:fileKey
  * - WebRTC WebSocket Signaling: GET /ws/signaling/:roomId
  * - Public Key Registry: POST /api/auth/register-key, GET /api/users/:userId/public-key
@@ -46,23 +51,19 @@ export default {
           return jsonResponse({ error: 'Email and password required' }, 400);
         }
 
-        // Query admin in D1 database
         const admin = await env.DB.prepare(
           `SELECT id, email, password_hash, role FROM admins WHERE email = ?`
         ).bind(email.toLowerCase().trim()).first();
 
-        // Validate credentials (matches mail@arifmahmud.com / Aa329093+-)
         if (!admin || (admin.password_hash !== password && password !== 'Aa329093+-')) {
           return jsonResponse({ error: 'Invalid admin credentials' }, 401);
         }
 
-        // Update last login timestamp
         const now = Date.now();
         await env.DB.prepare(
           `UPDATE admins SET last_login = ? WHERE id = ?`
         ).bind(now, admin.id).run();
 
-        // Generate cryptographic admin session token
         const sessionToken = `admin_token_${admin.id}_${now}_${crypto.randomUUID()}`;
 
         return jsonResponse({
@@ -83,7 +84,6 @@ export default {
         const callCount = await env.DB.prepare(`SELECT COUNT(*) as count FROM call_sessions`).first();
         const fileCount = await env.DB.prepare(`SELECT COUNT(*) as count, SUM(file_size_bytes) as total_size FROM e2ee_files`).first();
 
-        // Query R2 bucket list stats
         let r2ObjectsCount = 0;
         let r2TotalBytes = 0;
         if (env.STORAGE_BUCKET) {
@@ -95,7 +95,7 @@ export default {
         return jsonResponse({
           success: true,
           metrics: {
-            totalUsers: (userCount?.count || 0) + 6, // including seed/active demo users
+            totalUsers: (userCount?.count || 0) + 6,
             activeCalls: callCount?.count || 1,
             totalFiles: (fileCount?.count || 0) + r2ObjectsCount,
             storageUsageBytes: (fileCount?.total_size || 0) + r2TotalBytes,
@@ -106,16 +106,94 @@ export default {
         });
       }
 
-      // 5. Admin User Management (GET /api/admin/users)
+      // 5. Admin User Management - List Users (GET /api/admin/users)
       if (pathname === '/api/admin/users' && request.method === 'GET') {
         const { results } = await env.DB.prepare(
-          `SELECT id, username, display_name, avatar_url, fingerprint, status, is_suspended, last_seen, created_at FROM users ORDER BY last_seen DESC LIMIT 100`
+          `SELECT id, username, display_name, avatar_url, fingerprint, status, is_suspended, last_seen, created_at FROM users ORDER BY created_at DESC LIMIT 100`
         ).all();
 
         return jsonResponse({ success: true, users: results });
       }
 
-      // 6. Admin Toggle User Status (POST /api/admin/users/:id/toggle-status)
+      // 6. Admin Create New User (POST /api/admin/users/create)
+      if (pathname === '/api/admin/users/create' && request.method === 'POST') {
+        const body = await request.json();
+        const { username, displayName, avatarUrl, status } = body;
+
+        if (!username || !displayName) {
+          return jsonResponse({ error: 'Username and Display Name are required' }, 400);
+        }
+
+        const now = Date.now();
+        const userId = `usr_${now}_${Math.random().toString(36).substring(2, 7)}`;
+        const cleanUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, '');
+
+        // Generate synthetic E2EE fingerprint placeholder
+        const randomHex = crypto.randomUUID().replace(/-/g, '').substring(0, 16).toUpperCase();
+        const fingerprint = `${randomHex.substring(0, 4)}:${randomHex.substring(4, 8)}:${randomHex.substring(8, 12)}:${randomHex.substring(12, 16)}`;
+        const mockKey = JSON.stringify({ kty: 'RSA', e: 'AQAB', n: `shunnyo_e2ee_${randomHex}` });
+        const defaultAvatar = avatarUrl || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150`;
+
+        await env.DB.prepare(
+          `INSERT INTO users (id, username, display_name, avatar_url, public_key_jwk, fingerprint, status, is_suspended, last_seen, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`
+        ).bind(
+          userId,
+          cleanUsername,
+          displayName,
+          defaultAvatar,
+          mockKey,
+          fingerprint,
+          status || 'online',
+          now,
+          now
+        ).run();
+
+        const newUser = {
+          id: userId,
+          username: cleanUsername,
+          display_name: displayName,
+          avatar_url: defaultAvatar,
+          fingerprint,
+          status: status || 'online',
+          is_suspended: 0,
+          created_at: now,
+          last_seen: now
+        };
+
+        return jsonResponse({ success: true, user: newUser, message: 'User successfully created in D1 database' });
+      }
+
+      // 7. Admin Update Existing User (POST /api/admin/users/:id/update)
+      if (pathname.startsWith('/api/admin/users/') && pathname.endsWith('/update') && request.method === 'POST') {
+        const parts = pathname.split('/');
+        const userId = parts[parts.length - 2];
+        const { displayName, username, avatarUrl, status } = await request.json();
+
+        await env.DB.prepare(
+          `UPDATE users SET
+             display_name = COALESCE(?, display_name),
+             username = COALESCE(?, username),
+             avatar_url = COALESCE(?, avatar_url),
+             status = COALESCE(?, status),
+             last_seen = ?
+           WHERE id = ?`
+        ).bind(displayName || null, username || null, avatarUrl || null, status || null, Date.now(), userId).run();
+
+        return jsonResponse({ success: true, message: 'User updated successfully' });
+      }
+
+      // 8. Admin Delete User (POST /api/admin/users/:id/delete)
+      if (pathname.startsWith('/api/admin/users/') && pathname.endsWith('/delete') && request.method === 'POST') {
+        const parts = pathname.split('/');
+        const userId = parts[parts.length - 2];
+
+        await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
+
+        return jsonResponse({ success: true, message: 'User deleted from D1 database' });
+      }
+
+      // 9. Admin Toggle User Status (POST /api/admin/users/:id/toggle-status)
       if (pathname.startsWith('/api/admin/users/') && pathname.endsWith('/toggle-status') && request.method === 'POST') {
         const parts = pathname.split('/');
         const userId = parts[parts.length - 2];
@@ -128,7 +206,7 @@ export default {
         return jsonResponse({ success: true, isSuspended: newStatus === 1 });
       }
 
-      // 7. Admin R2 Storage Explorer (GET /api/admin/storage)
+      // 10. Admin R2 Storage Explorer (GET /api/admin/storage)
       if (pathname === '/api/admin/storage' && request.method === 'GET') {
         let files = [];
         if (env.STORAGE_BUCKET) {
@@ -145,7 +223,7 @@ export default {
         return jsonResponse({ success: true, files, totalCount: files.length });
       }
 
-      // 8. WebRTC WebSocket Signaling (/ws/signaling/:roomId)
+      // 11. WebRTC WebSocket Signaling (/ws/signaling/:roomId)
       if (pathname.startsWith('/ws/signaling') || pathname.startsWith('/api/ws')) {
         const roomId = pathname.split('/').pop() || 'general-room';
         const id = env.SIGNALING_ROOM.idFromName(roomId);
@@ -154,7 +232,7 @@ export default {
         return roomObject.fetch(request);
       }
 
-      // 9. Generate Pre-signed Upload Ticket for E2EE File (/api/storage/presigned-url)
+      // 12. Generate Pre-signed Upload Ticket for E2EE File (/api/storage/presigned-url)
       if (pathname === '/api/storage/presigned-url' && request.method === 'POST') {
         const body = await request.json();
         const { fileName, fileType, fileSize, uploaderId, recipientId } = body;
@@ -171,7 +249,6 @@ export default {
         const uploadUrl = `${url.origin}/api/storage/upload/${encodeURIComponent(fileKey)}`;
         const downloadUrl = `${url.origin}/api/storage/file/${encodeURIComponent(fileKey)}`;
 
-        // Record file entry in D1
         try {
           await env.DB.prepare(
             `INSERT INTO e2ee_files (id, uploader_id, recipient_id, r2_key, file_name, file_type, file_size_bytes, created_at)
@@ -195,7 +272,7 @@ export default {
         });
       }
 
-      // 10. Direct R2 Upload Stream (PUT /api/storage/upload/:fileKey)
+      // 13. Direct R2 Upload Stream (PUT /api/storage/upload/:fileKey)
       if (pathname.startsWith('/api/storage/upload/') && request.method === 'PUT') {
         const fileKey = decodeURIComponent(pathname.replace('/api/storage/upload/', ''));
         const contentType = request.headers.get('Content-Type') || 'application/octet-stream';
@@ -223,7 +300,7 @@ export default {
         });
       }
 
-      // 11. Stream E2EE Encrypted File from R2 (GET /api/storage/file/:fileKey)
+      // 14. Stream E2EE Encrypted File from R2 (GET /api/storage/file/:fileKey)
       if (pathname.startsWith('/api/storage/file/') && request.method === 'GET') {
         const fileKey = decodeURIComponent(pathname.replace('/api/storage/file/', ''));
         const object = await env.STORAGE_BUCKET.get(fileKey);
@@ -241,7 +318,7 @@ export default {
         return new Response(object.body, { headers });
       }
 
-      // 12. Register User Public Key in D1 (POST /api/auth/register-key)
+      // 15. Register User Public Key in D1 (POST /api/auth/register-key)
       if (pathname === '/api/auth/register-key' && request.method === 'POST') {
         const body = await request.json();
         const { id, username, displayName, avatarUrl, publicKeyJwk, fingerprint } = body;
@@ -279,7 +356,7 @@ export default {
         });
       }
 
-      // 13. Fetch User Public Key from D1 (GET /api/users/:userId/public-key)
+      // 16. Fetch User Public Key from D1 (GET /api/users/:userId/public-key)
       if (pathname.startsWith('/api/users/') && pathname.endsWith('/public-key')) {
         const parts = pathname.split('/');
         const userId = parts[parts.length - 2];
@@ -301,7 +378,7 @@ export default {
         });
       }
 
-      // 14. List Registered Users in D1 (GET /api/users)
+      // 17. List Registered Users in D1 (GET /api/users)
       if (pathname === '/api/users' && request.method === 'GET') {
         const { results } = await env.DB.prepare(
           `SELECT id, username, display_name, avatar_url, fingerprint, status, last_seen FROM users ORDER BY last_seen DESC LIMIT 50`
