@@ -8,6 +8,9 @@ import InstallPrompt from './components/PWA/InstallPrompt';
 import SecurityModal from './components/Shared/SecurityModal';
 import AdminLoginModal from './components/Admin/AdminLoginModal';
 import AdminPanel from './components/Admin/AdminPanel';
+import UserProfileModal from './components/Profile/UserProfileModal';
+import CreateGroupModal from './components/Group/CreateGroupModal';
+import GroupDetailsModal from './components/Group/GroupDetailsModal';
 import ErrorBoundary from './components/Shared/ErrorBoundary';
 
 function MainAppLayout() {
@@ -16,6 +19,12 @@ function MainAppLayout() {
     setShowAdminModal, 
     showAdminPanel, 
     setShowAdminPanel, 
+    showProfileModal,
+    setShowProfileModal,
+    showCreateGroupModal,
+    setShowCreateGroupModal,
+    showGroupDetailsModal,
+    setShowGroupDetailsModal,
     adminUser, 
     handleAdminLogin, 
     handleAdminLogout,
@@ -52,6 +61,24 @@ function MainAppLayout() {
 
       {/* E2EE Cryptographic Security Modal */}
       <SecurityModal />
+
+      {/* User Profile & Customization Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
+
+      {/* Create Encrypted Group Chat Modal */}
+      <CreateGroupModal
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
+      />
+
+      {/* Group Details & Member Management Modal */}
+      <GroupDetailsModal
+        isOpen={showGroupDetailsModal}
+        onClose={() => setShowGroupDetailsModal(false)}
+      />
 
       {/* Admin Authentication Login Modal */}
       <AdminLoginModal

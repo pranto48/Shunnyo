@@ -21,6 +21,7 @@ export default function ChatHeader() {
     activeContact, 
     setIsMobileSidebarOpen, 
     setShowSecurityModal,
+    setShowGroupDetailsModal,
     isLiveConnected,
     typingUsers
   } = useChat();
@@ -49,9 +50,20 @@ export default function ChatHeader() {
 
   return (
     <div className="h-16 px-3 sm:px-4 border-b border-slate-800/80 bg-background-surface/80 backdrop-blur-xl flex items-center justify-between relative z-20 safe-top">
-      <div className="flex items-center space-x-3 min-w-0">
+      <div 
+        className="flex items-center space-x-3 min-w-0 cursor-pointer"
+        onClick={() => {
+          if (activeContact.isGroup) {
+            sounds.playClick();
+            setShowGroupDetailsModal(true);
+          }
+        }}
+      >
         <button
-          onClick={() => setIsMobileSidebarOpen(true)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsMobileSidebarOpen(true);
+          }}
           className="md:hidden p-1.5 -ml-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 active:scale-95 transition-all"
         >
           <ChevronLeft className="w-6 h-6" />
@@ -67,11 +79,14 @@ export default function ChatHeader() {
 
         <div className="flex flex-col min-w-0">
           <div className="flex items-center space-x-2">
-            <h3 className="text-sm md:text-base font-bold text-slate-100 truncate flex items-center gap-1.5">
+            <h3 className="text-sm md:text-base font-bold text-slate-100 truncate flex items-center gap-1.5 hover:text-accent-cyan transition-colors">
               {activeContact.name}
               {!activeContact.isGroup && (
                 <button
-                  onClick={handleOpenSecurity}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenSecurity();
+                  }}
                   title="Click to view E2EE Fingerprint & Encryption Details"
                   className="hover:scale-110 transition-transform"
                 >

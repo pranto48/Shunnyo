@@ -35,6 +35,21 @@ export function ChatProvider({ children }) {
   const [typingUsers, setTypingUsers] = useState({}); // { [userId]: boolean }
   const [liveTextStreams, setLiveTextStreams] = useState({}); // { [contactId]: { text, senderName, senderId } }
 
+  // Current User Profile State
+  const [currentUserProfile, setCurrentUserProfile] = useState(() => {
+    try {
+      const saved = localStorage.getItem('shunnyo_user_profile');
+      return saved ? JSON.parse(saved) : currentUser;
+    } catch {
+      return currentUser;
+    }
+  });
+
+  // Modals
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showGroupDetailsModal, setShowGroupDetailsModal] = useState(false);
+
   // Admin Portal State
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
@@ -500,6 +515,75 @@ export function ChatProvider({ children }) {
     liveChatService.sendLiveTextStream(text, activeContactId, activeContactId);
   };
 
+  /**
+   * Update User Profile (Photo, Name, Bio, Role, Status)
+   */
+  const updateUserProfile = (updatedData) => {
+    sounds.playConnected();
+    const newProfile = { ...currentUserProfile, ...updatedData };
+    setCurrentUserProfile(newProfile);
+    try {
+      localStorage.setItem('shunnyo_user_profile', JSON.stringify(newProfile));
+    } catch {}
+  };
+
+  /**
+   * Create Encrypted Group Chat
+   */
+  const createGroup = ({ name, description, avatar, memberIds }) => {
+    sounds.playCallConnected();
+    const newGroupId = `g-${Date.now()}`;
+    const selectedMembers = contacts.filter((c) => memberIds.includes(c.id));
+
+    const newGroup = {
+      id: newGroupId,
+      name,
+      description,
+      avatar: avatar || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&auto=format&fit=crop&q=80',
+      isGroup: true,
+      membersCount: selectedMembers.length + 1,
+      members: selectedMembers,
+      unreadCount: 0,
+      status: 'online'
+    };
+
+    setContacts((prev) => [newGroup, ...prev]);
+    setActiveContactId(newGroupId);
+
+    // Initial group system welcome message
+    const welcomeMsg = {
+      id: `m-grp-init-${Date.now()}`,
+      senderId: 'system',
+      senderName: 'Shunnyo Protocol',
+      recipientId: newGroupId,
+      contactId: newGroupId,
+      content: `🔒 "${name}" গ্রুপটি সফলভাবে তৈরি হয়েছে। সদস্য সংখ্যা: ${selectedMembers.length + 1} জন। গ্রুপে এন্ড-টু-এন্ড এনক্রিপশন সক্রিয়।`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'read',
+      isEncrypted: true,
+      reactions: []
+    };
+
+    setMessages((prev) => ({
+      ...prev,
+      [newGroupId]: [welcomeMsg]
+    }));
+  };
+
+  /**
+   * Update Group Members
+   */
+  const updateGroupMembers = (groupId, newMemberList) => {
+    sounds.playClick();
+    setContacts((prev) =>
+      prev.map((c) =>
+        c.id === groupId
+          ? { ...c, members: newMemberList, membersCount: newMemberList.length + 1 }
+          : c
+      )
+    );
+  };
+
   const regenerateKeys = async () => {
     sounds.playClick();
     const newKeyPair = await generateUserKeyPair();
@@ -510,9 +594,13 @@ export function ChatProvider({ children }) {
   return (
     <ChatContext.Provider
       value={{
-        currentUser,
+        currentUser: currentUserProfile,
+        currentUserProfile,
+        updateUserProfile,
         contacts,
         setContacts,
+        createGroup,
+        updateGroupMembers,
         activeContact,
         activeContactId,
         messages,
@@ -544,6 +632,12 @@ export function ChatProvider({ children }) {
         triggerSimulatedResponse,
         userKeyPair,
         isE2EEInitialized,
+        showProfileModal,
+        setShowProfileModal,
+        showCreateGroupModal,
+        setShowCreateGroupModal,
+        showGroupDetailsModal,
+        setShowGroupDetailsModal,
         showSecurityModal,
         setShowSecurityModal,
         regenerateKeys,

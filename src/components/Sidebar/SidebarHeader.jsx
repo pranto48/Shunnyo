@@ -7,28 +7,36 @@ import {
   MoreVertical, 
   Settings, 
   ShieldCheck, 
-  Sparkles,
-  PhoneCall,
-  UserCheck,
-  Check
+  Sparkles, 
+  Users, 
+  User, 
+  Plus, 
+  Check, 
+  Edit3
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
 export default function SidebarHeader() {
-  const { currentUser, openAdminPortal, setShowSecurityModal } = useChat();
+  const { 
+    currentUser, 
+    openAdminPortal, 
+    setShowSecurityModal, 
+    setShowProfileModal, 
+    setShowCreateGroupModal, 
+    updateUserProfile 
+  } = useChat();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
-  const [myStatus, setMyStatus] = useState(currentUser.status);
 
   const statusOptions = [
-    { key: 'online', label: 'Online', color: 'bg-emerald-500' },
-    { key: 'busy', label: 'Do Not Disturb', color: 'bg-rose-500' },
-    { key: 'away', label: 'Away', color: 'bg-amber-500' },
-    { key: 'offline', label: 'Invisible', color: 'bg-slate-500' }
+    { key: 'online', label: 'Online (অনলাইন)', color: 'bg-emerald-500' },
+    { key: 'busy', label: 'Do Not Disturb (ব্যস্ত)', color: 'bg-rose-500' },
+    { key: 'away', label: 'Away (অনুপস্থিত)', color: 'bg-amber-500' },
+    { key: 'offline', label: 'Invisible (অদৃশ্য)', color: 'bg-slate-500' }
   ];
 
   const handleStatusChange = (statusKey) => {
     sounds.playClick();
-    setMyStatus(statusKey);
+    updateUserProfile({ status: statusKey });
     setShowStatusMenu(false);
   };
 
@@ -37,11 +45,15 @@ export default function SidebarHeader() {
       {/* Top row: Brand & Profile */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="relative group cursor-pointer" onClick={() => setShowStatusMenu(!showStatusMenu)}>
+          <div
+            className="relative group cursor-pointer"
+            onClick={() => setShowStatusMenu(!showStatusMenu)}
+            title="ইউজার প্রোফাইল ও স্ট্যাটাস মেনু"
+          >
             <Avatar 
               src={currentUser.avatar} 
               name={currentUser.name} 
-              status={myStatus} 
+              status={currentUser.status} 
               size="md" 
               ring={true}
             />
@@ -50,13 +62,20 @@ export default function SidebarHeader() {
             </div>
           </div>
 
-          <div className="flex flex-col">
+          <div
+            className="flex flex-col cursor-pointer"
+            onClick={() => {
+              sounds.playClick();
+              setShowProfileModal(true);
+            }}
+            title="প্রোফাইল ওপেন করতে ক্লিক করুন"
+          >
             <div className="flex items-center space-x-1.5">
-              <span className="font-bold text-base text-slate-100 tracking-tight flex items-center gap-1.5">
+              <span className="font-bold text-base text-slate-100 tracking-tight flex items-center gap-1.5 hover:text-brand-300 transition-colors">
                 Shunnyo <span className="text-xs px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 font-mono">শূন্য</span>
               </span>
             </div>
-            <p className="text-xs text-slate-400 flex items-center gap-1">
+            <p className="text-xs text-slate-400 flex items-center gap-1 hover:text-slate-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               {currentUser.name}
             </p>
@@ -65,6 +84,18 @@ export default function SidebarHeader() {
 
         {/* Action icons */}
         <div className="flex items-center space-x-1">
+          {/* Create Group Button */}
+          <button 
+            title="নতুন গ্রুপ চ্যাট তৈরি করুন (Create Group)"
+            onClick={() => {
+              sounds.playClick();
+              setShowCreateGroupModal(true);
+            }}
+            className="p-2 rounded-xl text-cyan-400 hover:text-white hover:bg-cyan-500/20 active:scale-95 transition-all duration-200"
+          >
+            <Users className="w-5 h-5" />
+          </button>
+
           {/* Admin Portal Button */}
           <button 
             title="Admin Console (mail@arifmahmud.com)"
@@ -97,18 +128,32 @@ export default function SidebarHeader() {
             className="fixed inset-0 z-30" 
             onClick={() => setShowStatusMenu(false)} 
           />
-          <div className="absolute left-4 top-16 w-56 rounded-2xl glass-dropdown p-2 shadow-2xl z-40 animate-scale-in">
-            <div className="px-3 py-2 border-b border-slate-700/50 mb-1">
-              <p className="text-xs font-semibold text-slate-300">Set Presence Status</p>
-              <p className="text-[11px] text-slate-500 font-mono">{currentUser.username}</p>
+          <div className="absolute left-4 top-16 w-60 rounded-2xl glass-dropdown p-2 shadow-2xl z-40 animate-scale-in border border-slate-700/80">
+            <div className="px-3 py-2 border-b border-slate-700/50 mb-1 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-200">{currentUser.name}</p>
+                <p className="text-[10px] text-slate-500 font-mono">{currentUser.username}</p>
+              </div>
+              <button
+                onClick={() => {
+                  sounds.playClick();
+                  setShowStatusMenu(false);
+                  setShowProfileModal(true);
+                }}
+                className="p-1.5 rounded-lg bg-brand-500/20 text-brand-300 hover:bg-brand-500/40 text-xs flex items-center gap-1"
+                title="প্রোফাইল এডিট করুন"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <div className="space-y-1">
+
+            <div className="space-y-1 mb-1">
               {statusOptions.map((opt) => (
                 <button
                   key={opt.key}
                   onClick={() => handleStatusChange(opt.key)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    myStatus === opt.key 
+                    currentUser.status === opt.key 
                       ? 'bg-brand-600/30 text-brand-300 border border-brand-500/30' 
                       : 'text-slate-300 hover:bg-white/5 hover:text-white'
                   }`}
@@ -117,9 +162,23 @@ export default function SidebarHeader() {
                     <span className={`w-2.5 h-2.5 rounded-full ${opt.color}`} />
                     <span>{opt.label}</span>
                   </div>
-                  {myStatus === opt.key && <Check className="w-3.5 h-3.5 text-brand-400" />}
+                  {currentUser.status === opt.key && <Check className="w-3.5 h-3.5 text-brand-400" />}
                 </button>
               ))}
+            </div>
+
+            <div className="border-t border-slate-800 pt-1">
+              <button
+                onClick={() => {
+                  sounds.playClick();
+                  setShowStatusMenu(false);
+                  setShowProfileModal(true);
+                }}
+                className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs text-slate-300 hover:bg-white/5 hover:text-white transition-all font-semibold"
+              >
+                <User className="w-4 h-4 text-brand-400" />
+                <span>প্রোফাইল ও বায়ো পরিবর্তন</span>
+              </button>
             </div>
           </div>
         </>
