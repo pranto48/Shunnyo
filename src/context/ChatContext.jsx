@@ -7,6 +7,7 @@ import {
   decryptPayload, 
   generateUserKeyPair 
 } from '../utils/cryptoUtils';
+import { cloudflareApi } from '../services/cloudflareApi';
 
 const ChatContext = createContext();
 
@@ -25,7 +26,7 @@ export function ChatProvider({ children }) {
   const [isE2EEInitialized, setIsE2EEInitialized] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
 
-  // Initialize Native Web Crypto RSA/AES-GCM Keys on startup
+  // Initialize Native Web Crypto RSA/AES-GCM Keys & Sync with Cloudflare D1
   useEffect(() => {
     async function initCrypto() {
       try {
@@ -33,6 +34,9 @@ export function ChatProvider({ children }) {
         setUserKeyPair(keyPair);
         setIsE2EEInitialized(true);
         console.log('Shunnyo E2EE Initialized. Local Fingerprint:', keyPair.fingerprint);
+
+        // Register Public Key with Cloudflare D1 database
+        await cloudflareApi.registerPublicKey(currentUser, keyPair.publicKeyJwk, keyPair.fingerprint);
       } catch (err) {
         console.error('Failed to initialize Web Crypto E2EE:', err);
       }
