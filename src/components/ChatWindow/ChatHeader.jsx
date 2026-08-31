@@ -14,7 +14,9 @@ import {
   Lock,
   Radio,
   UserX,
-  UserCheck
+  UserCheck,
+  Search,
+  X
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
@@ -28,10 +30,13 @@ export default function ChatHeader() {
     typingUsers,
     blockUser,
     unblockUser,
-    isBlocked
+    isBlocked,
+    messageSearchQuery,
+    setMessageSearchQuery
   } = useChat();
   const { startCall, startGroupAudioCall, activeGroupCalls, callState } = useCall();
   const [showMenu, setShowMenu] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   if (!activeContact) return null;
 
@@ -145,7 +150,50 @@ export default function ChatHeader() {
         </div>
       </div>
 
+      {/* In-Chat Search Bar Overlay */}
+      {isSearching ? (
+        <div className="absolute inset-0 bg-background-surface/95 backdrop-blur-xl px-4 flex items-center z-30 animate-fade-in gap-2">
+          <Search className="w-4 h-4 text-brand-400 flex-shrink-0" />
+          <input
+            type="text"
+            autoFocus
+            value={messageSearchQuery}
+            onChange={(e) => setMessageSearchQuery(e.target.value)}
+            placeholder="এই চ্যাটে মেসেজ খুঁজুন..."
+            className="flex-1 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+          />
+          {messageSearchQuery && (
+            <button
+              onClick={() => setMessageSearchQuery('')}
+              className="p-1 text-slate-400 hover:text-slate-200"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setIsSearching(false);
+              setMessageSearchQuery('');
+            }}
+            className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+          >
+            বন্ধ করুন
+          </button>
+        </div>
+      ) : null}
+
       <div className="flex items-center space-x-1 sm:space-x-2">
+        <button
+          onClick={() => {
+            sounds.playClick();
+            setIsSearching(true);
+          }}
+          title="Search in conversation"
+          className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-brand-600/30 text-slate-300 hover:text-brand-300 border border-slate-700/60 hover:border-brand-500/40 active:scale-95 transition-all shadow-sm"
+        >
+          <Search className="w-4 h-4" />
+        </button>
+
         <button
           onClick={handleAudioCall}
           disabled={callState !== 'idle'}

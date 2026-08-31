@@ -139,6 +139,12 @@ export function ChatProvider({ children }) {
 
     // Handle Incoming Live Messages from WebSocket
     const unsubMessage = liveChatService.on('message', async (incoming) => {
+      // If user is blocked, silently ignore incoming message
+      if (blockedUsers.has(incoming.senderId)) {
+        console.log('[LiveChat] Message dropped from blocked user:', incoming.senderId);
+        return;
+      }
+
       console.log('[LiveChat] Incoming live message received:', incoming);
 
       const targetConversationId = incoming.recipientId === currentUser.id ? incoming.senderId : (incoming.contactId || incoming.senderId);

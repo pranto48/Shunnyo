@@ -11,7 +11,7 @@ export default function AuthGate() {
 
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({
-    name: '', username: '', email: '', password: ''
+    name: '', username: '', email: '', password: '', confirmPassword: ''
   });
 
   const handleChange = (e) => {
@@ -25,12 +25,16 @@ export default function AuthGate() {
     if (authView === 'login') {
       await login(form.email || form.username, form.password);
     } else {
-      if (!form.name || !form.username || !form.email || !form.password) {
+      if (!form.name || !form.username || !form.email || !form.password || !form.confirmPassword) {
         setAuthError('সকল ঘর পূরণ করুন।');
         return;
       }
       if (form.password.length < 6) {
         setAuthError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।');
+        return;
+      }
+      if (form.password !== form.confirmPassword) {
+        setAuthError('পাসওয়ার্ড দুটি মেলেনি!');
         return;
       }
       await register(form.name, form.username, form.email, form.password);
@@ -152,6 +156,23 @@ export default function AuthGate() {
                 {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+
+            {/* Confirm Password (Register Only) */}
+            {authView === 'register' && (
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  name="confirmPassword"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="পাসওয়ার্ড নিশ্চিত করুন"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-brand-500/60 focus:ring-1 focus:ring-brand-500/40 transition-all"
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
+            )}
 
             {/* Error */}
             {authError && (

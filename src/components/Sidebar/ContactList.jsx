@@ -23,7 +23,7 @@ export default function ContactList() {
   ];
 
   const processedContacts = filteredContacts.filter((c) => {
-    if (filter === 'online') return c.status === 'online' || !c.status;
+    if (filter === 'online') return c.status === 'online';
     return true;
   });
 

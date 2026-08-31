@@ -459,13 +459,69 @@ export default {
         });
       }
 
-      // 17. List Registered Users in D1 (GET /api/users)
-      if (pathname === '/api/users' && request.method === 'GET') {
-        const { results } = await env.DB.prepare(
-          `SELECT id, username, display_name, avatar_url, fingerprint, status, last_seen FROM users ORDER BY last_seen DESC LIMIT 50`
-        ).all();
+      // 18. Admin Full Database Backup JSON Export (GET /api/admin/backup/d1)
+      if (pathname === '/api/admin/backup/d1' && request.method === 'GET') {
+        try {
+          const users = await env.DB.prepare(`SELECT * FROM users`).all();
+          const admins = await env.DB.prepare(`SELECT id, email, role, last_login FROM admins`).all();
+          const e2eeFiles = await env.DB.prepare(`SELECT * FROM e2ee_files LIMIT 500`).all();
+          let callSessions = { results: [] };
+          try {
+            callSessions = await env.DB.prepare(`SELECT * FROM call_sessions LIMIT 500`).all();
+          } catch {}
 
-        return jsonResponse({ success: true, users: results });
+          const backupData = {
+            version: '1.0.0',
+            exportedAt: new Date().toISOString(),
+            schema: 'shunnyo_d1_database',
+            tables: {
+              users: users.results || [],
+              admins: admins.results || [],
+              e2ee_files: e2eeFiles.results || [],
+              call_sessions: callSessions.results || []
+            }
+          };
+
+          return jsonResponse(backupData);
+        } catch (dbErr) {
+          return jsonResponse({ error: 'D1 backup export failed', detail: dbErr.message }, 500);
+        }
+      }
+
+      // 19. Admin R2 Snapshot Backup (POST /api/admin/backup/r2/save)
+      if (pathname === '/api/admin/backup/r2/save' && request.method === 'POST') {
+        try {
+          const users = await env.DB.prepare(`SELECT * FROM users`).all();
+          const admins = await env.DB.prepare(`SELECT id, email, role, last_login FROM admins`).all();
+          const e2eeFiles = await env.DB.prepare(`SELECT * FROM e2ee_files LIMIT 500`).all();
+
+          const backupPayload = JSON.stringify({
+            version: '1.0.0',
+            snapshotDate: new Date().toISOString(),
+            data: {
+              users: users.results || [],
+              admins: admins.results || [],
+              e2ee_files: e2eeFiles.results || []
+            }
+          }, null, 2);
+
+          const backupKey = `backups/backup-snapshot-${Date.now()}.json`;
+          if (env.STORAGE_BUCKET) {
+            await env.STORAGE_BUCKET.put(backupKey, backupPayload, {
+              httpMetadata: { contentType: 'application/json' },
+              customMetadata: { type: 'automated_snapshot', createdAt: Date.now().toString() }
+            });
+          }
+
+          return jsonResponse({
+            success: true,
+            message: 'Backup snapshot successfully stored in Cloudflare R2',
+            key: backupKey,
+            size: backupPayload.length
+          });
+        } catch (err) {
+          return jsonResponse({ error: 'R2 snapshot backup failed', detail: err.message }, 500);
+        }
       }
 
       return jsonResponse({ error: 'Route not found' }, 404);

@@ -37,35 +37,19 @@ export default function Sidebar() {
       {/* Main Contact List */}
       <ContactList />
 
-      {/* Interactive Simulation / Status Footer */}
-      <div className="p-2.5 border-t border-slate-800/80 bg-background-surface/70 backdrop-blur-md hidden md:block">
-        <div className="flex items-center justify-between gap-2">
-          <button
-            onClick={() => handleSimulateIncomingCall('video')}
-            disabled={callState !== 'idle'}
-            className="flex-1 py-1.5 px-2.5 rounded-xl bg-gradient-to-r from-brand-600/30 to-indigo-600/30 hover:from-brand-600/50 hover:to-indigo-600/50 border border-brand-500/30 text-brand-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
-            title="ভিডিও কল টেস্ট করুন"
-          >
-            <Video className="w-3.5 h-3.5 text-brand-400" />
-            <span>Test Video</span>
-          </button>
-
-          <button
-            onClick={() => handleSimulateIncomingCall('audio')}
-            disabled={callState !== 'idle'}
-            className="flex-1 py-1.5 px-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
-            title="অডিও কল টেস্ট করুন"
-          >
-            <PhoneIncoming className="w-3.5 h-3.5 text-accent-emerald" />
-            <span>Test Audio</span>
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-800/40 text-[11px] text-slate-500">
-          <span className="flex items-center gap-1">
-            <Shield className="w-3 h-3 text-accent-emerald" /> E2E Encrypted
+      {/* Clean Status Footer */}
+      <div className="p-3 border-t border-slate-800/80 bg-background-surface/70 backdrop-blur-md hidden md:block">
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-slate-300 font-medium text-[11px]">এনক্রিপ্টেড নেটওয়ার্ক</span>
+          </div>
+          <span className="flex items-center gap-1 text-[11px] text-slate-400 font-mono">
+            <Shield className="w-3 h-3 text-emerald-400" /> E2EE
           </span>
-          <span className="font-mono text-slate-600">v1.0.0-PWA</span>
         </div>
       </div>
 
