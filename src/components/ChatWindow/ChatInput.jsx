@@ -297,91 +297,94 @@ export default function ChatInput() {
         />
       ) : (
         /* Normal Chat Input Control Bar */
-        <div className="flex items-end space-x-1.5 sm:space-x-2">
-          {/* Attachment Button */}
-          <button
-            onClick={() => {
-              sounds.playClick();
-              setShowAttachmentMenu(!showAttachmentMenu);
-            }}
-            title="Attach Files / Photos / Location (R2)"
-            className={`p-2.5 rounded-2xl text-slate-400 hover:text-brand-300 hover:bg-brand-500/10 active:scale-95 transition-all duration-200 border ${
-              showAttachmentMenu ? 'bg-brand-500/20 border-brand-500/40 text-brand-300' : 'border-transparent'
-            }`}
-          >
-            <Paperclip className="w-5 h-5" />
-          </button>
+        <div className="flex items-end space-x-1 sm:space-x-2">
+          {/* Quick Action Group (Attachment & Extra Tools) */}
+          <div className="flex items-center space-x-0.5 sm:space-x-1 flex-shrink-0">
+            {/* Attachment Button */}
+            <button
+              onClick={() => {
+                sounds.playClick();
+                setShowAttachmentMenu(!showAttachmentMenu);
+              }}
+              title="Attach Files / Photos / Location (R2)"
+              className={`p-2 sm:p-2.5 rounded-2xl text-slate-400 hover:text-brand-300 hover:bg-brand-500/10 active:scale-90 transition-all duration-200 border ${
+                showAttachmentMenu ? 'bg-brand-500/20 border-brand-500/40 text-brand-300' : 'border-transparent'
+              }`}
+            >
+              <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
 
-          {/* Text Style (Color & Size) Button */}
-          <button
-            onClick={() => {
-              sounds.playClick();
-              setShowStyleMenu(!showStyleMenu);
-            }}
-            title="টেক্সট কালার ও সাইজ পরিবর্তন"
-            className={`p-2.5 rounded-2xl transition-all duration-200 border ${
-              textColor || textSize !== 'normal' || showStyleMenu
-                ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                : 'text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 border-transparent'
-            }`}
-          >
-            <Palette className="w-5 h-5" />
-          </button>
+            {/* Text Style (Color & Size) Button - Hidden on very small screens to give max text space, visible on tablet+ or toggleable */}
+            <button
+              onClick={() => {
+                sounds.playClick();
+                setShowStyleMenu(!showStyleMenu);
+              }}
+              title="টেক্সট কালার ও সাইজ পরিবর্তন"
+              className={`p-2 sm:p-2.5 rounded-2xl transition-all duration-200 border hidden xs:flex items-center justify-center ${
+                textColor || textSize !== 'normal' || showStyleMenu
+                  ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
+                  : 'text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 border-transparent'
+              }`}
+            >
+              <Palette className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
 
-          {/* Emoji Popover Button */}
-          <button
-            onClick={() => {
-              sounds.playClick();
-              setShowEmojiPicker(!showEmojiPicker);
-            }}
-            title="Insert Emoji"
-            className="p-2.5 rounded-2xl text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 active:scale-95 transition-all duration-200"
-          >
-            <Smile className="w-5 h-5" />
-          </button>
+            {/* Emoji Popover Button */}
+            <button
+              onClick={() => {
+                sounds.playClick();
+                setShowEmojiPicker(!showEmojiPicker);
+              }}
+              title="Insert Emoji"
+              className="p-2 sm:p-2.5 rounded-2xl text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 active:scale-90 transition-all duration-200 flex items-center justify-center"
+            >
+              <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          </div>
 
-          {/* Smart Text Input with Live Styled Preview */}
-          <div className="flex-1 relative rounded-2xl bg-slate-950/70 border border-slate-800/80 focus-within:border-brand-500/80 focus-within:ring-1 focus-within:ring-brand-500/50 transition-all flex items-center shadow-inner overflow-hidden">
+          {/* Smart Text Input with Dynamic Auto-resize and Mobile Friendly Padding */}
+          <div className="flex-1 min-w-0 relative rounded-2xl bg-slate-950/80 border border-slate-700/80 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500/60 transition-all flex items-center shadow-inner overflow-hidden">
             <textarea
               ref={inputRef}
               rows={1}
               value={text}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder={`${activeContact?.name || 'চ্যাটে'} মেসেজ লিখুন...`}
+              placeholder={`${activeContact?.name ? activeContact.name + ' কে লিখুন...' : 'মেসেজ লিখুন...'}`}
               style={{ 
-                minHeight: '44px',
+                minHeight: '42px',
                 color: textColor || undefined
               }}
-              className={`w-full px-4 py-2.5 bg-transparent placeholder-slate-500 focus:outline-none resize-none max-h-32 custom-scrollbar font-sans ${currentSizeClass}`}
+              className={`w-full px-3.5 py-2.5 sm:px-4 sm:py-2.5 bg-transparent placeholder-slate-500 focus:outline-none resize-none max-h-36 custom-scrollbar font-sans leading-relaxed text-sm sm:text-base ${currentSizeClass}`}
             />
           </div>
 
-          {/* Messenger Style Audio Voice Record Button */}
-          <button
-            onClick={startVoiceRecording}
-            title="ভয়েস মেসেজ রেকর্ড করুন (Record Voice Message)"
-            className="p-2.5 rounded-2xl text-slate-400 hover:text-purple-300 hover:bg-purple-500/15 border border-transparent hover:border-purple-500/30 transition-all duration-200 active:scale-95"
-          >
-            <Mic className="w-5 h-5" />
-          </button>
-
-          {/* Send Action Button */}
-          <button
-            onClick={() => {
-              sounds.playClick();
-              handleSend();
-            }}
-            disabled={!text.trim() && !pendingAttachment}
-            title="Send Encrypted Message (Enter)"
-            className={`p-2.5 rounded-2xl transition-all duration-200 flex items-center justify-center ${
-              text.trim() || pendingAttachment
-                ? 'bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-glow-brand active:scale-95'
-                : 'bg-slate-800/60 text-slate-600 cursor-not-allowed opacity-50'
-            }`}
-          >
-            <Send className="w-5 h-5" />
-          </button>
+          {/* Action Group: Voice Mic or Send Button (Adaptive for Mobile) */}
+          <div className="flex items-center space-x-1 flex-shrink-0">
+            {text.trim() || pendingAttachment ? (
+              /* Active Send Action Button */
+              <button
+                onClick={() => {
+                  sounds.playClick();
+                  handleSend();
+                }}
+                title="মেসেজ পাঠান (Send)"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-glow-brand active:scale-95 transition-all duration-200 flex items-center justify-center"
+              >
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            ) : (
+              /* Voice Record Button when text is empty */
+              <button
+                onClick={startVoiceRecording}
+                title="ভয়েস রেকর্ড করুন (Hold/Click to Record)"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-slate-800/80 hover:bg-purple-600/30 text-slate-300 hover:text-purple-300 border border-slate-700 hover:border-purple-500/40 transition-all duration-200 active:scale-90 flex items-center justify-center"
+              >
+                <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
