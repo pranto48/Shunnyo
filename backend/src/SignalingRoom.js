@@ -68,6 +68,45 @@ export class SignalingRoom {
       data: { peerId, userId, onlineUsers, totalPeers: this.sessions.size }
     }));
 
+    // Auto-flush pending offline messages from D1 for this user
+    if (this.env?.DB) {
+      try {
+        const pending = await this.env.DB.prepare(
+          `SELECT id, recipient_id, sender_id, sender_name, encrypted_envelope, attachment, style, reply_to, timestamp, created_at
+           FROM offline_messages WHERE recipient_id = ? AND status = 'pending' ORDER BY created_at ASC`
+        ).bind(userId).all();
+
+        if (pending?.results && pending.results.length > 0) {
+          console.log(`[SignalingRoom] Flushing ${pending.results.length} offline messages to ${userId}`);
+          for (const row of pending.results) {
+            webSocket.send(JSON.stringify({
+              type: 'chat:message',
+              data: {
+                id: row.id,
+                senderId: row.sender_id,
+                senderName: row.sender_name,
+                recipientId: row.recipient_id,
+                contactId: row.sender_id,
+                encryptedEnvelope: row.encrypted_envelope ? JSON.parse(row.encrypted_envelope) : null,
+                attachment: row.attachment ? JSON.parse(row.attachment) : null,
+                style: row.style ? JSON.parse(row.style) : null,
+                replyTo: row.reply_to ? JSON.parse(row.reply_to) : null,
+                timestamp: row.timestamp,
+                isOfflineBuffered: true
+              }
+            }));
+          }
+
+          // Mark flushed messages as delivered
+          await this.env.DB.prepare(
+            `UPDATE offline_messages SET status = 'delivered' WHERE recipient_id = ? AND status = 'pending'`
+          ).bind(userId).run();
+        }
+      } catch (dbQueueErr) {
+        console.warn('[SignalingRoom] D1 offline flush error:', dbQueueErr);
+      }
+    }
+
     webSocket.addEventListener('message', async (event) => {
       try {
         const msg = JSON.parse(event.data);
@@ -77,6 +116,12 @@ export class SignalingRoom {
           // --- 1. Live Chat Messaging ---
           case 'chat:message':
             console.log(`[SignalingRoom] Live Chat message from ${userId} to ${data.recipientId || 'room'}`);
+            
+            // Check if recipient is currently connected
+            const targetRecipientId = data.recipientId;
+            const isRecipientOnline = Array.from(this.sessions.values()).some(s => s.userId === targetRecipientId);
+
+            // Broadcast live via WebSocket
             this.broadcast(webSocket, {
               type: 'chat:message',
               data: {
@@ -86,6 +131,42 @@ export class SignalingRoom {
                 timestamp: data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }
             });
+
+            // If recipient is offline, buffer encrypted envelope into D1 database
+            if (!isRecipientOnline && targetRecipientId && this.env?.DB) {
+              try {
+                const msgId = data.id || `m_off_${Date.now()}`;
+                await this.env.DB.prepare(
+                  `INSERT OR REPLACE INTO offline_messages (id, recipient_id, sender_id, sender_name, encrypted_envelope, attachment, style, reply_to, timestamp, status, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
+                ).bind(
+                  msgId,
+                  targetRecipientId,
+                  userId,
+                  username,
+                  data.encryptedEnvelope ? JSON.stringify(data.encryptedEnvelope) : null,
+                  data.attachment ? JSON.stringify(data.attachment) : null,
+                  data.style ? JSON.stringify(data.style) : null,
+                  data.replyTo ? JSON.stringify(data.replyTo) : null,
+                  data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  Date.now()
+                ).run();
+                console.log(`[SignalingRoom] Offline message buffered in D1 for ${targetRecipientId} (msg: ${msgId})`);
+              } catch (bufferErr) {
+                console.warn('[SignalingRoom] Failed to buffer offline message in D1:', bufferErr);
+              }
+            }
+            break;
+
+          // --- 1b. Chat Delivery / Read Acknowledgment ---
+          case 'chat:ack':
+            if (data?.messageId && this.env?.DB) {
+              try {
+                await this.env.DB.prepare(
+                  `UPDATE offline_messages SET status = ? WHERE id = ?`
+                ).bind(data.status || 'read', data.messageId).run();
+              } catch {}
+            }
             break;
 
           // --- 2. Live Typing Indicator ---

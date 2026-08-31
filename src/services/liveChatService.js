@@ -115,6 +115,13 @@ class LiveChatService {
   }
 
   /**
+   * Send delivery / read acknowledgment
+   */
+  sendAck(messageId, status = 'read') {
+    this.sendPayload('chat:ack', { messageId, status });
+  }
+
+  /**
    * Broadcast real-time keystroke text stream
    */
   sendLiveTextStream(text, recipientId, contactId) {

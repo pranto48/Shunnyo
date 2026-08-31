@@ -201,15 +201,28 @@ export function ChatProvider({ children }) {
         isEncrypted: !!incoming.encryptedEnvelope,
         encryptedEnvelope: incoming.encryptedEnvelope,
         reactions: incoming.reactions || [],
-        attachment: incoming.attachment || null
+        attachment: incoming.attachment || null,
+        style: incoming.style || null,
+        replyTo: incoming.replyTo || null
       };
 
       sounds.playMessageReceived();
 
-      setMessages((prev) => ({
-        ...prev,
-        [targetConversationId]: [...(prev[targetConversationId] || []), formattedMsg]
-      }));
+      // Send read ACK back if it was an offline buffered message
+      if (incoming.isOfflineBuffered && incoming.id) {
+        liveChatService.sendAck(incoming.id, 'delivered');
+      }
+
+      setMessages((prev) => {
+        const existing = prev[targetConversationId] || [];
+        if (existing.some(m => m.id === formattedMsg.id)) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [targetConversationId]: [...existing, formattedMsg]
+        };
+      });
 
       // If sender is not already in contacts, dynamically add them!
       setContacts((prev) => {
