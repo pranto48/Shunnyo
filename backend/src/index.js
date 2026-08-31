@@ -251,6 +251,17 @@ export default {
         }
       }
 
+      // ── User Auth: Verify Token (GET /api/auth/verify) ──
+      if (pathname === '/api/auth/verify' && request.method === 'GET') {
+        const authHeader = request.headers.get('Authorization') || '';
+        const token = authHeader.replace('Bearer ', '').trim();
+        if (!token) return jsonResponse({ error: 'Token required' }, 401);
+        if (token.startsWith('admin-token-') || token.startsWith('user-token-') || token.startsWith('demo-token-')) {
+          return jsonResponse({ valid: true });
+        }
+        return jsonResponse({ error: 'Invalid token' }, 401);
+      }
+
       // 4. Admin Dashboard Metrics (GET /api/admin/metrics)
       if (pathname === '/api/admin/metrics' && request.method === 'GET') {
         const userCount = await env.DB.prepare(`SELECT COUNT(*) as count FROM users`).first();
