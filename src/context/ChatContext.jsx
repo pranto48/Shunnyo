@@ -9,6 +9,7 @@ import {
 } from '../utils/cryptoUtils';
 import { cloudflareApi } from '../services/cloudflareApi';
 import { liveChatService } from '../services/liveChatService';
+import { indexedDbVault } from '../utils/indexedDbStore';
 
 const ChatContext = createContext();
 
@@ -16,6 +17,32 @@ export function ChatProvider({ children }) {
   const [contacts, setContacts] = useState(initialContacts);
   const [activeContactId, setActiveContactId] = useState(initialContacts[0]?.id || 'c-1');
   const [messages, setMessages] = useState(initialMessages);
+
+  // Hydrate messages from client-side IndexedDB offline vault on mount
+  useEffect(() => {
+    async function loadCachedVault() {
+      try {
+        const cachedConvos = await indexedDbVault.getAllConversations();
+        if (cachedConvos && Object.keys(cachedConvos).length > 0) {
+          setMessages((prev) => ({
+            ...prev,
+            ...cachedConvos
+          }));
+          console.log('[IndexedDB] Successfully restored conversation history from local vault');
+        }
+      } catch (e) {
+        console.warn('[IndexedDB] Vault hydration warning:', e);
+      }
+    }
+    loadCachedVault();
+  }, []);
+
+  // Auto-sync active conversation changes to IndexedDB
+  useEffect(() => {
+    if (activeContactId && messages && messages[activeContactId]) {
+      indexedDbVault.saveConversationMessages(activeContactId, messages[activeContactId]);
+    }
+  }, [messages, activeContactId]);
   const [replyingToMessage, setReplyingToMessage] = useState(null);
   const [editingMessage, setEditingMessage] = useState(null);
   const [filter, setFilter] = useState('all');
