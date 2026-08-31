@@ -189,16 +189,66 @@ export default {
         }
       }
 
-      // ── User Auth: Verify Token (GET /api/auth/verify) ──
-      if (pathname === '/api/auth/verify' && request.method === 'GET') {
-        const authHeader = request.headers.get('Authorization') || '';
-        const token = authHeader.replace('Bearer ', '').trim();
-        if (!token) return jsonResponse({ error: 'Token required' }, 401);
-        // Simple token validation: if it starts with known prefixes it's valid
-        if (token.startsWith('admin-token-') || token.startsWith('user-token-') || token.startsWith('demo-token-')) {
-          return jsonResponse({ valid: true });
+      // ── User Directory & Live User Search (GET /api/users/search?q=) ──
+      if (pathname === '/api/users/search' && request.method === 'GET') {
+        const query = (url.searchParams.get('q') || '').trim().toLowerCase();
+        try {
+          let usersQuery;
+          if (query) {
+            usersQuery = await env.DB.prepare(
+              `SELECT id, username, display_name, avatar_url, fingerprint, status, role, email FROM users 
+               WHERE is_suspended = 0 AND (LOWER(username) LIKE ? OR LOWER(display_name) LIKE ? OR LOWER(email) LIKE ?) 
+               ORDER BY last_seen DESC LIMIT 30`
+            ).bind(`%${query}%`, `%${query}%`, `%${query}%`).all();
+          } else {
+            usersQuery = await env.DB.prepare(
+              `SELECT id, username, display_name, avatar_url, fingerprint, status, role, email FROM users 
+               WHERE is_suspended = 0 
+               ORDER BY last_seen DESC LIMIT 50`
+            ).all();
+          }
+
+          const mappedUsers = (usersQuery.results || []).map(u => ({
+            id: u.id,
+            name: u.display_name,
+            username: u.username.startsWith('@') ? u.username : `@${u.username}`,
+            email: u.email || `${u.username}@shunnyo.app`,
+            avatar: u.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            status: u.status || 'online',
+            role: u.role || 'member',
+            fingerprint: u.fingerprint
+          }));
+
+          return jsonResponse({ success: true, users: mappedUsers });
+        } catch (searchErr) {
+          return jsonResponse({ error: 'Search failed', detail: searchErr.message }, 500);
         }
-        return jsonResponse({ error: 'Invalid token' }, 401);
+      }
+
+      // ── User Directory (GET /api/users/directory) ──
+      if (pathname === '/api/users/directory' && request.method === 'GET') {
+        try {
+          const { results } = await env.DB.prepare(
+            `SELECT id, username, display_name, avatar_url, fingerprint, status, role, email FROM users 
+             WHERE is_suspended = 0 
+             ORDER BY created_at DESC LIMIT 50`
+          ).all();
+
+          const mappedUsers = (results || []).map(u => ({
+            id: u.id,
+            name: u.display_name,
+            username: u.username.startsWith('@') ? u.username : `@${u.username}`,
+            email: u.email || `${u.username}@shunnyo.app`,
+            avatar: u.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            status: u.status || 'online',
+            role: u.role || 'member',
+            fingerprint: u.fingerprint
+          }));
+
+          return jsonResponse({ success: true, users: mappedUsers });
+        } catch (dirErr) {
+          return jsonResponse({ error: 'Directory fetch failed', detail: dirErr.message }, 500);
+        }
       }
 
       // 4. Admin Dashboard Metrics (GET /api/admin/metrics)
