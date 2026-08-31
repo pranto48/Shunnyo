@@ -187,45 +187,38 @@ export default function ChatHeader() {
         </div>
       ) : null}
 
-      <div className="flex items-center space-x-1 sm:space-x-2">
-        <button
-          onClick={() => {
-            sounds.playClick();
-            setIsSearching(true);
-          }}
-          title="Search in conversation"
-          className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-brand-600/30 text-slate-300 hover:text-brand-300 border border-slate-700/60 hover:border-brand-500/40 active:scale-95 transition-all shadow-sm"
-        >
-          <Search className="w-4 h-4" />
-        </button>
-
+      <div className="flex items-center space-x-1 sm:space-x-1.5">
+        {/* Messenger Style Audio Call Button */}
         <button
           onClick={handleAudioCall}
           disabled={callState !== 'idle'}
           title="Start Audio Call"
-          className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-brand-600/30 text-slate-300 hover:text-brand-300 border border-slate-700/60 hover:border-brand-500/40 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:pointer-events-none"
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-900/60 hover:bg-brand-500/20 text-brand-400 hover:text-brand-300 border border-slate-800 hover:border-brand-500/40 active:scale-90 transition-all flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
         >
-          <Phone className="w-4 h-4" />
+          <Phone className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
         </button>
 
+        {/* Messenger Style Video Call Button */}
         <button
           onClick={handleVideoCall}
           disabled={callState !== 'idle'}
           title="Start Video Call"
-          className="p-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-glow-brand active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-glow-brand active:scale-90 transition-all flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
         >
-          <Video className="w-4 h-4" />
+          <Video className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
         </button>
 
+        {/* Messenger Info / Security Details Button */}
         <div className="relative">
           <button
             onClick={() => {
               sounds.playClick();
               setShowMenu(!showMenu);
             }}
-            className="p-2.5 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 border border-transparent hover:border-slate-700/60 active:scale-95 transition-all"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-900/60 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 active:scale-90 transition-all flex items-center justify-center"
+            title="Chat Settings & Details"
           >
-            <MoreVertical className="w-4 h-4" />
+            <Info className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </button>
 
           {showMenu && (

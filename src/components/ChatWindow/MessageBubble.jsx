@@ -203,16 +203,16 @@ export default function MessageBubble({ message, isGroup = false }) {
           onDelete={deleteMessage}
         />
 
-        {/* Message Bubble Container */}
+        {/* Message Bubble Container (Facebook Messenger Curved Geometry) */}
         <div
-          className={`px-4 py-2.5 rounded-2xl relative shadow-md transition-all ${
+          className={`px-4 py-2 sm:px-4.5 sm:py-2.5 rounded-[20px] relative shadow-md transition-all ${
             isSoloEmoji
               ? 'bg-transparent shadow-none px-1 py-1'
               : message.isDeleted
-              ? 'bg-slate-900/60 border border-slate-800/60 rounded-xl'
+              ? 'bg-slate-900/60 border border-slate-800/60 rounded-2xl'
               : isSentByMe
-              ? 'bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 text-white rounded-br-sm shadow-glow-brand'
-              : 'bg-background-card/90 text-slate-100 rounded-bl-sm border border-slate-700/60 backdrop-blur-md'
+              ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-br-[4px] shadow-sm'
+              : 'bg-slate-800/90 text-slate-100 rounded-bl-[4px] border border-slate-700/50 backdrop-blur-md shadow-sm'
           }`}
         >
           {/* Deleted Message State */}
