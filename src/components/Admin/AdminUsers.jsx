@@ -206,6 +206,7 @@ export default function AdminUsers() {
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/40 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 <th className="py-3 px-4">ইউজার / প্রোফাইল</th>
+                <th className="py-3 px-4">রোল ও অধিকার</th>
                 <th className="py-3 px-4">E2EE পাবলিক কি ফিঙ্গারপ্রিন্ট</th>
                 <th className="py-3 px-4">স্ট্যাটাস</th>
                 <th className="py-3 px-4 text-right">অ্যাকশন ও নিয়ন্ত্রণ</th>
@@ -214,14 +215,14 @@ export default function AdminUsers() {
             <tbody className="divide-y divide-slate-800/60 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan="4" className="py-8 text-center text-slate-400">
+                  <td colSpan="5" className="py-8 text-center text-slate-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-400 mb-2" />
                     <span>ইউজার তথ্য লোড হচ্ছে...</span>
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="py-8 text-center text-slate-500">
+                  <td colSpan="5" className="py-8 text-center text-slate-500">
                     কোনো ইউজার পাওয়া যায়নি
                   </td>
                 </tr>
@@ -244,6 +245,23 @@ export default function AdminUsers() {
                         </div>
                         <div className="text-[11px] text-slate-400 font-mono">@{user.username}</div>
                       </div>
+                    </td>
+
+                    {/* Role Badge */}
+                    <td className="py-3 px-4">
+                      {user.role === 'admin' ? (
+                        <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold">
+                          এডমিন (Admin)
+                        </span>
+                      ) : user.role === 'moderator' ? (
+                        <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
+                          মডারেটর
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-medium">
+                          মেম্বার (Member)
+                        </span>
+                      )}
                     </td>
 
                     {/* Fingerprint */}

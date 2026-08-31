@@ -22,6 +22,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState(AVATAR_PRESETS[0]);
   const [status, setStatus] = useState('online');
+  const [role, setRole] = useState('member');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,7 +50,8 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
           displayName: displayName.trim(),
           username: cleanUsername,
           avatarUrl,
-          status
+          status,
+          role
         })
       });
 
@@ -185,6 +187,22 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* User Role Selector */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              ইউজার রোল ও অধিকার (User Role & Permissions)
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-brand-500 transition-all"
+            >
+              <option value="member">সাধারণ সদস্য (Standard Member)</option>
+              <option value="moderator">মডারেটর (Community Moderator)</option>
+              <option value="admin">সিস্টেম এডমিন (System Administrator)</option>
+            </select>
           </div>
 
           {/* Initial Status */}

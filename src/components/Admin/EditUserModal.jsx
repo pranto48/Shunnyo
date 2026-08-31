@@ -13,6 +13,7 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }) 
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [status, setStatus] = useState('online');
+  const [role, setRole] = useState('member');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }) 
       setUsername(user.username || '');
       setAvatarUrl(user.avatar_url || user.avatar || '');
       setStatus(user.status || 'online');
+      setRole(user.role || 'member');
     }
   }, [user]);
 
@@ -39,7 +41,8 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }) 
         username: username.trim(),
         avatar_url: avatarUrl,
         avatar: avatarUrl,
-        status
+        status,
+        role
       };
 
       // Call Cloudflare Worker D1 update endpoint
@@ -50,7 +53,8 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }) 
           displayName: displayName.trim(),
           username: username.trim(),
           avatarUrl,
-          status
+          status,
+          role
         })
       });
 
@@ -126,6 +130,19 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }) 
               onChange={(e) => setAvatarUrl(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 focus:outline-none focus:border-cyan-500 transition-all font-mono"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">ইউজার রোল ও পারমিশন (Role & Permissions)</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-cyan-500 transition-all"
+            >
+              <option value="member">সাধারণ সদস্য (Standard Member)</option>
+              <option value="moderator">মডারেটর (Community Moderator)</option>
+              <option value="admin">সিস্টেম এডমিন (System Administrator)</option>
+            </select>
           </div>
 
           <div>

@@ -195,7 +195,7 @@ export default {
       // 5. Admin User Management - List Users (GET /api/admin/users)
       if (pathname === '/api/admin/users' && request.method === 'GET') {
         const { results } = await env.DB.prepare(
-          `SELECT id, username, display_name, avatar_url, fingerprint, status, is_suspended, last_seen, created_at FROM users ORDER BY created_at DESC LIMIT 100`
+          `SELECT id, username, display_name, avatar_url, fingerprint, status, role, is_suspended, last_seen, created_at FROM users ORDER BY created_at DESC LIMIT 100`
         ).all();
 
         return jsonResponse({ success: true, users: results });
@@ -204,7 +204,7 @@ export default {
       // 6. Admin Create New User (POST /api/admin/users/create)
       if (pathname === '/api/admin/users/create' && request.method === 'POST') {
         const body = await request.json();
-        const { username, displayName, avatarUrl, status } = body;
+        const { username, displayName, avatarUrl, status, role } = body;
 
         if (!username || !displayName) {
           return jsonResponse({ error: 'Username and Display Name are required' }, 400);
@@ -221,8 +221,8 @@ export default {
         const defaultAvatar = avatarUrl || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150`;
 
         await env.DB.prepare(
-          `INSERT INTO users (id, username, display_name, avatar_url, public_key_jwk, fingerprint, status, is_suspended, last_seen, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`
+          `INSERT INTO users (id, username, display_name, avatar_url, public_key_jwk, fingerprint, status, role, is_suspended, last_seen, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`
         ).bind(
           userId,
           cleanUsername,
@@ -231,6 +231,7 @@ export default {
           mockKey,
           fingerprint,
           status || 'online',
+          role || 'member',
           now,
           now
         ).run();
@@ -242,6 +243,7 @@ export default {
           avatar_url: defaultAvatar,
           fingerprint,
           status: status || 'online',
+          role: role || 'member',
           is_suspended: 0,
           created_at: now,
           last_seen: now
@@ -254,7 +256,7 @@ export default {
       if (pathname.startsWith('/api/admin/users/') && pathname.endsWith('/update') && request.method === 'POST') {
         const parts = pathname.split('/');
         const userId = parts[parts.length - 2];
-        const { displayName, username, avatarUrl, status } = await request.json();
+        const { displayName, username, avatarUrl, status, role } = await request.json();
 
         await env.DB.prepare(
           `UPDATE users SET
@@ -262,9 +264,10 @@ export default {
              username = COALESCE(?, username),
              avatar_url = COALESCE(?, avatar_url),
              status = COALESCE(?, status),
+             role = COALESCE(?, role),
              last_seen = ?
            WHERE id = ?`
-        ).bind(displayName || null, username || null, avatarUrl || null, status || null, Date.now(), userId).run();
+        ).bind(displayName || null, username || null, avatarUrl || null, status || null, role || null, Date.now(), userId).run();
 
         return jsonResponse({ success: true, message: 'User updated successfully' });
       }
