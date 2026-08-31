@@ -1,4 +1,9 @@
 /**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
+/**
  * Cloudflare Durable Object: SignalingRoom
  * Real-time WebSocket Transport for:
  * 1. Live Chat Messaging & E2EE Payloads

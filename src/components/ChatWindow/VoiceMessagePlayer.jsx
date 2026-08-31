@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, FastForward } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';

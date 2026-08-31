@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { sounds } from '../utils/soundEffects';
 import { webrtcService } from '../services/webrtcService';

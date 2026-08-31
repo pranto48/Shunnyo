@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 import React, { useState } from 'react';
 import { UserPlus, X, Image as ImageIcon, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';

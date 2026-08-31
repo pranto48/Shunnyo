@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 export const currentUser = {
   id: 'user-me',
   name: 'Arif Mahmud',

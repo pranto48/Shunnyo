@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 import React, { useState, useRef } from 'react';
 import { useChat } from '../../context/ChatContext';
 import { useCall } from '../../context/CallContext';

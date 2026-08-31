@@ -1,4 +1,9 @@
 /**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
+/**
  * Live Chat WebSocket Client for Shunnyo
  * Connects to Cloudflare Durable Objects (SignalingRoom) for real-time messaging,
  * typing indicators, reactions, and presence synchronization.

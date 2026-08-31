@@ -1,4 +1,9 @@
 /**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
+/**
  * Cloudflare API Client for Shunnyo
  * - Public Key Registration & Discovery via D1
  * - Direct E2EE Encrypted File Uploads & Downloads via R2

@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, Send, Mic, Pause, Play, Loader2 } from 'lucide-react';
 import { audioRecorderEngine } from '../../utils/audioRecorder';

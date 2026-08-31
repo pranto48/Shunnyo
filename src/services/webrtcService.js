@@ -1,4 +1,9 @@
 /**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
+/**
  * Shunnyo WebRTC P2P Realtime Engine
  * Features:
  * - Google STUN Servers Configuration for NAT Traversal (stun.l.google.com:19302)

@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 import React, { useState, useMemo } from 'react';
 import { EMOJI_CATEGORIES, EMOJI_DATA } from '../../data/emojiDataset';
 import { Search, X, Clock, Sparkles } from 'lucide-react';

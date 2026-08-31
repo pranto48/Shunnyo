@@ -1,4 +1,9 @@
 /**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
+/**
  * Shunnyo Offline Vault — Native IndexedDB Storage Engine
  * High-speed, high-capacity client-side persistence for encrypted messages and conversations.
  */

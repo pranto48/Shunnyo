@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 import React, { useState, useEffect } from 'react';
 import { HardDrive, FileText, Download, Trash2, Shield, Loader2, RefreshCw } from 'lucide-react';
 import { CLOUDFLARE_BACKEND_URL } from '../../services/webrtcService';

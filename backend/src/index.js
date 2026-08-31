@@ -1,4 +1,9 @@
 /**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
+/**
  * Main Cloudflare Worker: Shunnyo Backend Engine & Admin Portal API
  * Endpoints:
  * - Admin Authentication: POST /api/admin/login

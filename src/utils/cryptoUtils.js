@@ -1,4 +1,9 @@
 /**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
+/**
  * Shunnyo E2EE (End-to-End Encryption) Engine using Native Web Crypto API
  * Hybrid Cryptography Architecture:
  * - Asymmetric: RSA-OAEP (2048-bit, SHA-256) for Key Exchange & Identity

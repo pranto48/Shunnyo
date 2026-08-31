@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { initialContacts, initialMessages, currentUser, simulatedReplies } from '../data/mockData';
 import { sounds } from '../utils/soundEffects';

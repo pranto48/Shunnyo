@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 // Web Audio API based interactive sound generator for Shunnyo
 class SoundSynthesizer {
   constructor() {

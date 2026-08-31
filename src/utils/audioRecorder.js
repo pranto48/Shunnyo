@@ -1,4 +1,9 @@
 /**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
+/**
  * Native Audio Recording Engine for Shunnyo
  * Uses Web Audio API + MediaRecorder for Facebook Messenger style voice messaging.
  */

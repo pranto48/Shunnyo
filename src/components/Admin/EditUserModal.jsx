@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) IT Support BD (https://itsupport.com.bd)
+ * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
+ */
+
 import React, { useState, useEffect } from 'react';
 import { Edit3, X, Loader2, Save } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
