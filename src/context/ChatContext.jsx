@@ -22,8 +22,26 @@ const ChatContext = createContext();
 
 export function ChatProvider({ children }) {
   const [contacts, setContacts] = useState(initialContacts);
-  const [activeContactId, setActiveContactId] = useState(initialContacts[0]?.id || 'c-1');
+  const [activeContactId, setActiveContactId] = useState(null);
   const [messages, setMessages] = useState(initialMessages);
+
+  // Fetch registered real users on initial load
+  useEffect(() => {
+    async function fetchLiveDirectory() {
+      try {
+        const res = await fetch('https://shunnyo-backend.mail-cde.workers.dev/api/users/directory');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.users)) {
+            setContacts(data.users);
+          }
+        }
+      } catch (err) {
+        console.debug('Directory fetch:', err);
+      }
+    }
+    fetchLiveDirectory();
+  }, []);
 
   // Request browser notification permission once on app launch
   useEffect(() => {
