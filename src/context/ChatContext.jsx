@@ -16,6 +16,7 @@ import {
 import { cloudflareApi } from '../services/cloudflareApi';
 import { liveChatService } from '../services/liveChatService';
 import { indexedDbVault } from '../utils/indexedDbStore';
+import { notificationService } from '../utils/notificationService';
 
 const ChatContext = createContext();
 
@@ -23,6 +24,11 @@ export function ChatProvider({ children }) {
   const [contacts, setContacts] = useState(initialContacts);
   const [activeContactId, setActiveContactId] = useState(initialContacts[0]?.id || 'c-1');
   const [messages, setMessages] = useState(initialMessages);
+
+  // Request browser notification permission once on app launch
+  useEffect(() => {
+    notificationService.requestPermission();
+  }, []);
 
   // Hydrate messages from client-side IndexedDB offline vault on mount
   useEffect(() => {
@@ -209,6 +215,7 @@ export function ChatProvider({ children }) {
       };
 
       sounds.playMessageReceived();
+      notificationService.showMessageNotification(incoming.senderName, decryptedText);
 
       // Send read ACK back if it was an offline buffered message
       if (incoming.isOfflineBuffered && incoming.id) {

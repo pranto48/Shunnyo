@@ -8,6 +8,7 @@ import { sounds } from '../utils/soundEffects';
 import { webrtcService } from '../services/webrtcService';
 import { liveChatService } from '../services/liveChatService';
 import { currentUser } from '../data/mockData';
+import { notificationService } from '../utils/notificationService';
 
 const CallContext = createContext();
 
@@ -346,6 +347,7 @@ export function CallProvider({ children }) {
     setIsScreenSharing(false);
     setIsMinimized(false);
     sounds.startIncomingRingtone();
+    notificationService.showCallNotification(contact?.name, type);
   };
 
   /**
