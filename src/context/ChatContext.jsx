@@ -9,6 +9,7 @@ import { sounds } from '../utils/soundEffects';
 import { 
   getOrCreateLocalKeyPair, 
   encryptPayload, 
+  encryptGroupPayload,
   decryptPayload, 
   generateUserKeyPair 
 } from '../utils/cryptoUtils';
@@ -185,7 +186,8 @@ export function ChatProvider({ children }) {
       let decryptedText = incoming.content;
       if (incoming.encryptedEnvelope && userKeyPair?.privateKeyJwk) {
         try {
-          decryptedText = await decryptPayload(incoming.encryptedEnvelope, userKeyPair.privateKeyJwk);
+          const res = await decryptPayload(incoming.encryptedEnvelope, userKeyPair.privateKeyJwk, currentUser.id);
+          if (res?.plaintext) decryptedText = res.plaintext;
         } catch (decErr) {
           console.warn('[LiveChat] Decryption warning:', decErr);
         }
@@ -394,11 +396,16 @@ export function ChatProvider({ children }) {
     const newMessageId = `m-${Date.now()}`;
     const activeReply = explicitReplyTo || replyingToMessage;
 
-    // Generate E2EE envelope
+    // Generate E2EE envelope (1-on-1 or Multi-Recipient Group E2EE)
     let encryptedEnvelope = null;
     if (userKeyPair?.publicKeyJwk) {
       try {
-        encryptedEnvelope = await encryptPayload(text || attachment?.name || 'Encrypted File', userKeyPair.publicKeyJwk);
+        if (activeContact?.isGroup) {
+          const keysMap = { [currentUser.id]: userKeyPair.publicKeyJwk };
+          encryptedEnvelope = await encryptGroupPayload(text || attachment?.name || 'Encrypted File', keysMap);
+        } else {
+          encryptedEnvelope = await encryptPayload(text || attachment?.name || 'Encrypted File', userKeyPair.publicKeyJwk);
+        }
       } catch (err) {
         console.debug('E2EE envelope generation:', err);
       }

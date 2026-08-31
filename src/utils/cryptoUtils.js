@@ -249,13 +249,93 @@ export async function encryptPayload(payloadData, recipientPublicKeyJwk, fileMet
 }
 
 /**
+ * 6b. Multi-Recipient Group E2EE Encryption
+ * Encrypts payload once with an ephemeral AES-GCM (256-bit) key,
+ * then encrypts that AES key for every group member's RSA-OAEP public key.
+ */
+export async function encryptGroupPayload(payloadData, recipientPublicKeysMap, fileMeta = null) {
+  // 1. Generate ephemeral 256-bit AES-GCM symmetric session key
+  const aesKey = await window.crypto.subtle.generateKey(
+    {
+      name: 'AES-GCM',
+      length: 256
+    },
+    true,
+    ['encrypt', 'decrypt']
+  );
+
+  // 2. Generate random 12-byte initialization vector (IV)
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+  // 3. Convert payload to ArrayBuffer
+  let dataBuffer;
+  if (typeof payloadData === 'string') {
+    dataBuffer = stringToUint8Array(payloadData);
+  } else if (payloadData instanceof ArrayBuffer) {
+    dataBuffer = payloadData;
+  } else if (payloadData instanceof Uint8Array) {
+    dataBuffer = payloadData.buffer;
+  } else {
+    dataBuffer = stringToUint8Array(JSON.stringify(payloadData));
+  }
+
+  // 4. Encrypt data with AES-GCM
+  const encryptedContentBuffer = await window.crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: iv
+    },
+    aesKey,
+    dataBuffer
+  );
+
+  // 5. Export raw AES key bytes
+  const rawAesKey = await window.crypto.subtle.exportKey('raw', aesKey);
+
+  // 6. Encrypt the raw AES key for each member's public key
+  const encryptedKeys = {};
+  for (const [memberId, pubKeyJwk] of Object.entries(recipientPublicKeysMap || {})) {
+    try {
+      if (pubKeyJwk) {
+        const recipientKey = await importPublicKey(pubKeyJwk);
+        const encBuffer = await window.crypto.subtle.encrypt(
+          { name: 'RSA-OAEP' },
+          recipientKey,
+          rawAesKey
+        );
+        encryptedKeys[memberId] = arrayBufferToBase64(encBuffer);
+      }
+    } catch (e) {
+      console.warn(`[Group E2EE] Key enc failed for ${memberId}:`, e);
+    }
+  }
+
+  return {
+    version: 'shunnyo-group-e2ee-v1',
+    algorithm: 'RSA-OAEP-2048+AES-GCM-256',
+    isGroup: true,
+    encryptedKeys, // { [userId]: base64EncryptedKey }
+    iv: arrayBufferToBase64(iv),
+    ciphertext: arrayBufferToBase64(encryptedContentBuffer),
+    isFile: !!fileMeta,
+    fileMeta: fileMeta || null,
+    timestamp: Date.now()
+  };
+}
+
+/**
  * 7. Hybrid Decryption: Decrypt Incoming Payload locally
  * - Decrypts AES key using local device's RSA-OAEP Private Key
  * - Decrypts ciphertext with AES-GCM + IV
  */
-export async function decryptPayload(cipherEnvelope, privateKeyJwk) {
+export async function decryptPayload(cipherEnvelope, privateKeyJwk, currentUserId = null) {
   try {
-    if (!cipherEnvelope || !cipherEnvelope.encryptedKey || !cipherEnvelope.ciphertext) {
+    let encryptedKeyStr = cipherEnvelope?.encryptedKey;
+    if (!encryptedKeyStr && cipherEnvelope?.encryptedKeys) {
+      encryptedKeyStr = cipherEnvelope.encryptedKeys[currentUserId] || Object.values(cipherEnvelope.encryptedKeys)[0];
+    }
+
+    if (!cipherEnvelope || !encryptedKeyStr || !cipherEnvelope.ciphertext) {
       throw new Error('Invalid E2EE Cipher Envelope');
     }
 
@@ -263,7 +343,7 @@ export async function decryptPayload(cipherEnvelope, privateKeyJwk) {
     const rsaPrivateKey = await importPrivateKey(privateKeyJwk);
 
     // 2. Decrypt AES session key with RSA Private Key
-    const encryptedKeyBuffer = base64ToArrayBuffer(cipherEnvelope.encryptedKey);
+    const encryptedKeyBuffer = base64ToArrayBuffer(encryptedKeyStr);
     const rawAesKey = await window.crypto.subtle.decrypt(
       {
         name: 'RSA-OAEP'
