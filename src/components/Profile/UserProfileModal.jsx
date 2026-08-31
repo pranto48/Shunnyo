@@ -243,21 +243,32 @@ export default function UserProfileModal({ isOpen, onClose }) {
                 type="text"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                placeholder="Lead Cryptographer"
+                placeholder="যেমন: Senior Developer / Member"
                 className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/80 border border-slate-800 text-slate-200 focus:outline-none focus:border-brand-500/60 focus:ring-1 focus:ring-brand-500/50"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">স্ট্যাটাস (Status / Bio)</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">ইমেইল ঠিকানা (Email Address)</label>
               <input
-                type="text"
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder="স্ট্যাটাস লিখুন..."
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/80 border border-slate-800 text-slate-200 focus:outline-none focus:border-brand-500/60 focus:ring-1 focus:ring-brand-500/50"
+                type="email"
+                value={currentUser.email || `${currentUser.username?.replace('@','') || 'user'}@shunnyo.app`}
+                disabled
+                className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/40 border border-slate-800 text-slate-400 font-mono"
               />
             </div>
+          </div>
+
+          {/* Custom Bio / About */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">ব্যক্তিগত বার্তা / বায়ো (About Bio)</label>
+            <textarea
+              rows={2}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="আপনার বায়ো বা স্ট্যাটাস লিখুন..."
+              className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/80 border border-slate-800 text-slate-200 focus:outline-none focus:border-brand-500/60 focus:ring-1 focus:ring-brand-500/50 resize-none font-sans"
+            />
           </div>
 
           {/* Online Availability Status Selector */}

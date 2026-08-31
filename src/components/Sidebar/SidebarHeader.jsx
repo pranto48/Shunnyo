@@ -123,13 +123,13 @@ export default function SidebarHeader() {
 
           {/* Admin Portal Button */}
           <button 
-            title="Admin Console (mail@arifmahmud.com)"
+            title="এডমিন প্যানেল কনসোল (Admin Console)"
             onClick={openAdminPortal}
-            className="p-2 rounded-xl text-brand-400 hover:text-white hover:bg-brand-500/20 active:scale-95 transition-all duration-200 relative group"
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-brand-600/30 to-indigo-600/30 hover:from-brand-600 hover:to-indigo-600 text-brand-300 hover:text-white border border-brand-500/40 shadow-sm active:scale-95 transition-all duration-200 group relative"
           >
-            <ShieldCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-brand-400 animate-ping" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-brand-400" />
+            <ShieldCheck className="w-4 h-4 text-brand-400 group-hover:text-white transition-colors" />
+            <span className="text-[11px] font-bold tracking-tight hidden lg:inline">Admin</span>
+            <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse group-hover:bg-white" />
           </button>
 
           {/* E2EE Security Modal Button */}
