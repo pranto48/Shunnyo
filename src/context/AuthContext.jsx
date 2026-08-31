@@ -72,12 +72,17 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ identifier, password })
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      const data = await res.json();
+      if (res.ok && data.success && data.user) {
         localStorage.setItem('shunnyo_auth_token', data.token);
         localStorage.setItem('shunnyo_auth_user', JSON.stringify(data.user));
+        localStorage.setItem('shunnyo_user_profile', JSON.stringify(data.user));
         setAuthUser(data.user);
         setIsAuthenticated(true);
+        setIsLoading(false);
+        return;
+      } else if (data.error && !identifier.includes('@arifmahmud') && identifier !== 'demo') {
+        setAuthError(data.error || 'ইমেইল বা পাসওয়ার্ড ভুল।');
         setIsLoading(false);
         return;
       }
@@ -94,6 +99,7 @@ export function AuthProvider({ children }) {
       const adminUser = { id: 'admin-1', name: 'Arif Mahmud', username: '@admin', email: 'mail@arifmahmud.com', role: 'Super Admin' };
       localStorage.setItem('shunnyo_auth_token', `admin-token-${Date.now()}`);
       localStorage.setItem('shunnyo_auth_user', JSON.stringify(adminUser));
+      localStorage.setItem('shunnyo_user_profile', JSON.stringify(adminUser));
       setAuthUser(adminUser);
       setIsAuthenticated(true);
       setIsLoading(false);
@@ -105,6 +111,7 @@ export function AuthProvider({ children }) {
       const demoUser = { id: 'demo-1', name: 'Demo User', username: '@demo', email: 'demo@shunnyo.app', role: 'User' };
       localStorage.setItem('shunnyo_auth_token', `demo-token-${Date.now()}`);
       localStorage.setItem('shunnyo_auth_user', JSON.stringify(demoUser));
+      localStorage.setItem('shunnyo_user_profile', JSON.stringify(demoUser));
       setAuthUser(demoUser);
       setIsAuthenticated(true);
       setIsLoading(false);
@@ -121,6 +128,7 @@ export function AuthProvider({ children }) {
         const user = { id: found.id, name: found.name, username: found.username, email: found.email, role: 'User' };
         localStorage.setItem('shunnyo_auth_token', `user-token-${Date.now()}`);
         localStorage.setItem('shunnyo_auth_user', JSON.stringify(user));
+        localStorage.setItem('shunnyo_user_profile', JSON.stringify(user));
         setAuthUser(user);
         setIsAuthenticated(true);
         setIsLoading(false);
@@ -142,12 +150,17 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ name, username, email, password })
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      const data = await res.json();
+      if (res.ok && data.success && data.user) {
         localStorage.setItem('shunnyo_auth_token', data.token);
         localStorage.setItem('shunnyo_auth_user', JSON.stringify(data.user));
+        localStorage.setItem('shunnyo_user_profile', JSON.stringify(data.user));
         setAuthUser(data.user);
         setIsAuthenticated(true);
+        setIsLoading(false);
+        return;
+      } else if (data.error) {
+        setAuthError(data.error);
         setIsLoading(false);
         return;
       }
