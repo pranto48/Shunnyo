@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Mail, Lock, User, AtSign, Eye, EyeOff, 
-  ShieldCheck, Loader2, AlertCircle, ArrowRight, Sparkles
+  ShieldCheck, Loader2, AlertCircle, ArrowRight
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
@@ -178,27 +178,7 @@ export default function AuthGate() {
             </button>
           </form>
 
-          {/* Credentials hint */}
-          <div className="mt-5 pt-4 border-t border-slate-800/60 space-y-2">
-            <div className="flex items-start space-x-2 text-[11px] text-slate-500 bg-slate-900/50 rounded-xl p-3 border border-slate-800/40">
-              <Sparkles className="w-3.5 h-3.5 text-brand-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-slate-400 font-semibold mb-0.5">অ্যাডমিন লগইন:</p>
-                <code className="text-brand-300">mail@arifmahmud.com</code>
-                <span className="text-slate-600 mx-1">|</span>
-                <code className="text-brand-300">Aa329093+-</code>
-              </div>
-            </div>
-            <div className="flex items-start space-x-2 text-[11px] text-slate-500 bg-slate-900/50 rounded-xl p-3 border border-slate-800/40">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-slate-400 font-semibold mb-0.5">ডেমো অ্যাকাউন্ট:</p>
-                <code className="text-cyan-300">demo</code>
-                <span className="text-slate-600 mx-1">|</span>
-                <code className="text-cyan-300">demo123</code>
-              </div>
-            </div>
-          </div>
+
         </div>
 
         {/* Footer */}
