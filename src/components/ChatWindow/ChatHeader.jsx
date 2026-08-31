@@ -235,6 +235,17 @@ export default function ChatHeader() {
                   <Lock className="w-4 h-4 text-accent-cyan" />
                   <span>Verify E2EE Fingerprint</span>
                 </button>
+                <div className="h-px bg-slate-800 my-1" />
+                
+                {/* Secret Private Mode Info */}
+                <div className="px-3 py-1.5 bg-brand-500/10 rounded-xl mb-1 border border-brand-500/20">
+                  <div className="flex items-center space-x-2 text-brand-300 font-bold text-[11px]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-brand-400" />
+                    <span>প্রাইভেট সিক্রেট চ্যাট সক্রিয়</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">RSA-2048 + AES-GCM এন্ড-টু-এন্ড এনক্রিপ্টেড ও ক্লাউডে জিরো-নলেজ সুরক্ষিত।</p>
+                </div>
+
                 <button
                   onClick={() => setShowMenu(false)}
                   className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all"
