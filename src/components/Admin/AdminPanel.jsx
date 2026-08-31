@@ -22,6 +22,8 @@ import AdminUsers from './AdminUsers';
 import AdminStorage from './AdminStorage';
 import AdminTelemetry from './AdminTelemetry';
 import AdminBackup from './AdminBackup';
+import AdminSecurity from './AdminSecurity';
+import AdminAuditLogs from './AdminAuditLogs';
 import { sounds } from '../../utils/soundEffects';
 
 export default function AdminPanel({ isOpen, onClose, adminUser, onLogout }) {
@@ -34,7 +36,9 @@ export default function AdminPanel({ isOpen, onClose, adminUser, onLogout }) {
     { id: 'users', label: 'ইউজার ম্যানেজমেন্ট', icon: Users },
     { id: 'storage', label: 'R2 স্টোরেজ ভল্ট', icon: HardDrive },
     { id: 'telemetry', label: 'WebRTC টেলিমেট্রি', icon: Activity },
-    { id: 'backup', label: 'ব্যাকআপ সিস্টেম', icon: Server }
+    { id: 'security', label: 'সিকিউরিটি ও ক্রিপ্টো', icon: Lock },
+    { id: 'logs', label: 'অডিট ও ইভেন্ট লগ', icon: Settings },
+    { id: 'backup', label: 'ব্যাকআপ ও ডিসকভারি', icon: Server }
   ];
 
   return (
@@ -122,6 +126,8 @@ export default function AdminPanel({ isOpen, onClose, adminUser, onLogout }) {
           {activeTab === 'users' && <AdminUsers />}
           {activeTab === 'storage' && <AdminStorage />}
           {activeTab === 'telemetry' && <AdminTelemetry />}
+          {activeTab === 'security' && <AdminSecurity />}
+          {activeTab === 'logs' && <AdminAuditLogs />}
           {activeTab === 'backup' && <AdminBackup adminUser={adminUser} />}
         </main>
       </div>
