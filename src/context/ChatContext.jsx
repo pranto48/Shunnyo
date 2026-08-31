@@ -149,7 +149,44 @@ export function ChatProvider({ children }) {
 
   const isBlocked = (userId) => blockedUsers.has(userId);
 
-  // 1. Initialize Native Web Crypto Keys & Register with D1
+  // Chat Requests System (Pending, Accepted, Rejected)
+  const [chatRequests, setChatRequests] = useState(() => {
+    try {
+      const saved = localStorage.getItem('shunnyo_chat_requests');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  const sendChatRequest = (targetContact) => {
+    sounds.playClick();
+    setChatRequests((prev) => {
+      const next = { ...prev, [targetContact.id]: 'pending_sent' };
+      try { localStorage.setItem('shunnyo_chat_requests', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const acceptChatRequest = (contactId) => {
+    sounds.playConnected();
+    setChatRequests((prev) => {
+      const next = { ...prev, [contactId]: 'accepted' };
+      try { localStorage.setItem('shunnyo_chat_requests', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const declineChatRequest = (contactId) => {
+    sounds.playDisconnected();
+    setChatRequests((prev) => {
+      const next = { ...prev, [contactId]: 'declined' };
+      try { localStorage.setItem('shunnyo_chat_requests', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const isChatRequestPending = (contactId) => chatRequests[contactId] === 'pending_received';
+  const isChatRequestSent = (contactId) => chatRequests[contactId] === 'pending_sent';
+  const isChatRequestAccepted = (contactId) => !chatRequests[contactId] || chatRequests[contactId] === 'accepted';
   useEffect(() => {
     async function initCrypto() {
       try {
@@ -753,7 +790,14 @@ export function ChatProvider({ children }) {
         blockedUsers,
         blockUser,
         unblockUser,
-        isBlocked
+        isBlocked,
+        chatRequests,
+        sendChatRequest,
+        acceptChatRequest,
+        declineChatRequest,
+        isChatRequestPending,
+        isChatRequestSent,
+        isChatRequestAccepted
       }}
     >
       {children}
