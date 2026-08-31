@@ -109,7 +109,7 @@ export default {
 
         try {
           const user = await env.DB.prepare(
-            `SELECT id, name, username, email, role FROM users WHERE (email = ? OR username = ?) AND password_hash = ?`
+            `SELECT id, display_name, username, email, role, avatar_url, public_key_jwk, fingerprint FROM users WHERE (LOWER(email) = ? OR LOWER(username) = ?) AND password_hash = ?`
           ).bind(identifier.toLowerCase(), identifier.toLowerCase(), password).first();
 
           if (!user) return jsonResponse({ error: 'ইমেইল বা পাসওয়ার্ড ভুল' }, 401);
@@ -117,7 +117,16 @@ export default {
           return jsonResponse({
             success: true,
             token: `user-token-${user.id}-${Date.now()}`,
-            user: { id: user.id, name: user.name, username: user.username, email: user.email, role: user.role || 'User' }
+            user: { 
+              id: user.id, 
+              name: user.display_name, 
+              username: user.username, 
+              email: user.email || `${user.username}@shunnyo.app`, 
+              role: user.role || 'member',
+              avatar: user.avatar_url,
+              publicKeyJwk: user.public_key_jwk ? JSON.parse(user.public_key_jwk) : null,
+              fingerprint: user.fingerprint
+            }
           });
         } catch (dbErr) {
           return jsonResponse({ error: 'সংযোগ ব্যর্থ', detail: dbErr.message }, 500);
@@ -131,23 +140,51 @@ export default {
           return jsonResponse({ error: 'সকল তথ্য প্রদান করুন' }, 400);
         }
         try {
+          const cleanUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, '');
           const exists = await env.DB.prepare(
-            `SELECT id FROM users WHERE email = ? OR username = ?`
-          ).bind(email.toLowerCase(), username.toLowerCase()).first();
+            `SELECT id FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?`
+          ).bind(email.toLowerCase(), cleanUsername).first();
 
           if (exists) return jsonResponse({ error: 'ইমেইল বা ইউজারনেম ইতোমধ্যে ব্যবহৃত' }, 409);
 
-          const userId = crypto.randomUUID();
+          const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          const randomHex = crypto.randomUUID().replace(/-/g, '').substring(0, 16).toUpperCase();
+          const fingerprint = `${randomHex.substring(0, 4)}:${randomHex.substring(4, 8)}:${randomHex.substring(8, 12)}:${randomHex.substring(12, 16)}`;
+          const mockKey = JSON.stringify({ kty: 'RSA', e: 'AQAB', n: `shunnyo_e2ee_${randomHex}` });
+          const defaultAvatar = `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150`;
+          const now = Date.now();
+
           await env.DB.prepare(
-            `INSERT INTO users (id, name, username, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, 'User', ?)`
-          ).bind(userId, name, username, email.toLowerCase(), password, Date.now()).run();
+            `INSERT INTO users (id, username, display_name, email, password_hash, avatar_url, public_key_jwk, fingerprint, status, role, is_suspended, last_seen, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'online', 'member', 0, ?, ?)`
+          ).bind(
+            userId,
+            cleanUsername,
+            name.trim(),
+            email.toLowerCase().trim(),
+            password,
+            defaultAvatar,
+            mockKey,
+            fingerprint,
+            now,
+            now
+          ).run();
 
           return jsonResponse({
             success: true,
-            token: `user-token-${userId}-${Date.now()}`,
-            user: { id: userId, name, username, email: email.toLowerCase(), role: 'User' }
+            token: `user-token-${userId}-${now}`,
+            user: { 
+              id: userId, 
+              name: name.trim(), 
+              username: `@${cleanUsername}`, 
+              email: email.toLowerCase().trim(), 
+              role: 'member',
+              avatar: defaultAvatar,
+              fingerprint: fingerprint
+            }
           });
         } catch (dbErr) {
+          console.error('[Register Error]', dbErr);
           return jsonResponse({ error: 'নিবন্ধন ব্যর্থ', detail: dbErr.message }, 500);
         }
       }
@@ -220,13 +257,18 @@ export default {
         const mockKey = JSON.stringify({ kty: 'RSA', e: 'AQAB', n: `shunnyo_e2ee_${randomHex}` });
         const defaultAvatar = avatarUrl || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150`;
 
+        const defaultEmail = `${cleanUsername}@shunnyo.app`;
+        const defaultPassword = 'user123';
+
         await env.DB.prepare(
-          `INSERT INTO users (id, username, display_name, avatar_url, public_key_jwk, fingerprint, status, role, is_suspended, last_seen, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`
+          `INSERT INTO users (id, username, display_name, email, password_hash, avatar_url, public_key_jwk, fingerprint, status, role, is_suspended, last_seen, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`
         ).bind(
           userId,
           cleanUsername,
           displayName,
+          defaultEmail,
+          defaultPassword,
           defaultAvatar,
           mockKey,
           fingerprint,
