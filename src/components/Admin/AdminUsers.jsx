@@ -153,25 +153,66 @@ export default function AdminUsers() {
     );
   };
 
-  const filteredUsers = users.filter((u) =>
-    (u.display_name || u.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (u.username || '').toLowerCase().includes(search.toLowerCase()) ||
-    (u.fingerprint || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const [roleFilter, setRoleFilter] = useState('all');
+
+  const handleQuickRoleChange = async (userId, newRole) => {
+    sounds.playClick();
+    try {
+      await fetch(`${CLOUDFLARE_BACKEND_URL}/api/admin/users/${userId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole })
+      });
+      sounds.playMessageSent();
+    } catch (e) {
+      console.warn('Role update fallback:', e);
+    }
+
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+    );
+  };
+
+  const filteredUsers = users.filter((u) => {
+    const matchSearch = (u.display_name || u.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                        (u.username || '').toLowerCase().includes(search.toLowerCase()) ||
+                        (u.fingerprint || '').toLowerCase().includes(search.toLowerCase());
+    const matchRole = roleFilter === 'all' || (u.role || 'member') === roleFilter;
+    return matchSearch && matchRole;
+  });
 
   return (
     <div className="space-y-4">
       {/* Search and Top Action Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="ইউজার বা ফিঙ্গারপ্রিন্ট খুঁজুন..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-all font-sans"
-          />
+        <div className="flex items-center space-x-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ইউজার বা ফিঙ্গারপ্রিন্ট খুঁজুন..."
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-all font-sans"
+            />
+          </div>
+
+          {/* Role Filter Tabs */}
+          <div className="flex items-center space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+            {['all', 'admin', 'moderator', 'member'].map((r) => (
+              <button
+                key={r}
+                onClick={() => { sounds.playClick(); setRoleFilter(r); }}
+                className={`px-2.5 py-1 rounded-lg font-semibold capitalize transition-all ${
+                  roleFilter === r
+                    ? 'bg-brand-600 text-white shadow-glow-brand'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {r === 'all' ? 'সকল' : r}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
@@ -247,21 +288,23 @@ export default function AdminUsers() {
                       </div>
                     </td>
 
-                    {/* Role Badge */}
+                    {/* Role Direct Selector */}
                     <td className="py-3 px-4">
-                      {user.role === 'admin' ? (
-                        <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold">
-                          এডমিন (Admin)
-                        </span>
-                      ) : user.role === 'moderator' ? (
-                        <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
-                          মডারেটর
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-medium">
-                          মেম্বার (Member)
-                        </span>
-                      )}
+                      <select
+                        value={user.role || 'member'}
+                        onChange={(e) => handleQuickRoleChange(user.id, e.target.value)}
+                        className={`text-[11px] font-bold rounded-lg px-2 py-1 bg-slate-950 border focus:outline-none transition-all cursor-pointer ${
+                          user.role === 'admin'
+                            ? 'text-purple-300 border-purple-500/40 bg-purple-950/20'
+                            : user.role === 'moderator'
+                            ? 'text-blue-300 border-blue-500/40 bg-blue-950/20'
+                            : 'text-slate-300 border-slate-700'
+                        }`}
+                      >
+                        <option value="admin" className="bg-slate-900 text-purple-300">এডমিন (Admin)</option>
+                        <option value="moderator" className="bg-slate-900 text-blue-300">মডারেটর (Mod)</option>
+                        <option value="member" className="bg-slate-900 text-slate-300">মেম্বার (Member)</option>
+                      </select>
                     </td>
 
                     {/* Fingerprint */}
