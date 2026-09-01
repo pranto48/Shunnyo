@@ -48,17 +48,27 @@ export function ChatProvider({ children }) {
     notificationService.requestPermission();
   }, []);
 
-  // Hydrate messages from client-side IndexedDB offline vault on mount
+  // Hydrate messages from client-side IndexedDB offline vault on mount (Sanitizing legacy corrupted messages)
   useEffect(() => {
     async function loadCachedVault() {
       try {
         const cachedConvos = await indexedDbVault.getAllConversations();
         if (cachedConvos && Object.keys(cachedConvos).length > 0) {
+          const cleaned = {};
+          for (const [convId, list] of Object.entries(cachedConvos)) {
+            if (Array.isArray(list)) {
+              cleaned[convId] = list.filter(m => 
+                m && 
+                !m.content?.includes('Decryption Error') && 
+                !m.content?.includes('corrupted ciphertext')
+              );
+            }
+          }
           setMessages((prev) => ({
             ...prev,
-            ...cachedConvos
+            ...cleaned
           }));
-          console.log('[IndexedDB] Successfully restored conversation history from local vault');
+          console.log('[IndexedDB] Successfully restored and sanitized conversation history');
         }
       } catch (e) {
         console.warn('[IndexedDB] Vault hydration warning:', e);

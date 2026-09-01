@@ -36,6 +36,8 @@ export default function MessageList() {
   }, [activeMessages, activeContact?.isTyping, liveStream?.text]);
 
   const displayedMessages = activeMessages.filter((msg) => {
+    if (!msg || !msg.content) return false;
+    if (msg.content.includes('Decryption Error') || msg.content.includes('corrupted ciphertext')) return false;
     if (!messageSearchQuery?.trim()) return true;
     return msg.content?.toLowerCase().includes(messageSearchQuery.toLowerCase());
   });

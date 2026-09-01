@@ -118,7 +118,11 @@ export default function ContactItem({ contact }) {
                     <Volume2 className="w-3 h-3" /> ভয়েস
                   </span>
                 )}
-                <span>{lastMsg.content || ''}</span>
+                <span>
+                  {lastMsg.content?.includes('Decryption Error') || lastMsg.content?.includes('corrupted ciphertext')
+                    ? '🔒 এনক্রিপ্টেড মেসেজ'
+                    : lastMsg.content || ''}
+                </span>
               </p>
             ) : (
               <p className="text-xs text-slate-500 truncate">{contact.customStatus || 'Online & Ready'}</p>
