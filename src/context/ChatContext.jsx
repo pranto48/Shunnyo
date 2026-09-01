@@ -458,16 +458,28 @@ export function ChatProvider({ children }) {
     const newMessageId = `m-${Date.now()}`;
     const activeReply = explicitReplyTo || replyingToMessage;
 
-    // Generate E2EE envelope (1-on-1 or Multi-Recipient Group E2EE)
+    // Generate E2EE envelope (Sender + Recipient multi-key encryption so both parties can decrypt)
     let encryptedEnvelope = null;
     if (userKeyPair?.publicKeyJwk) {
       try {
-        if (activeContact?.isGroup) {
-          const keysMap = { [currentUser.id]: userKeyPair.publicKeyJwk };
-          encryptedEnvelope = await encryptGroupPayload(text || attachment?.name || 'Encrypted File', keysMap);
-        } else {
-          encryptedEnvelope = await encryptPayload(text || attachment?.name || 'Encrypted File', userKeyPair.publicKeyJwk);
+        const keysMap = { [currentUser.id]: userKeyPair.publicKeyJwk };
+        
+        // If activeContact has a public key or is in directory, include recipient's public key
+        if (activeContact?.publicKeyJwk) {
+          keysMap[activeContact.id] = activeContact.publicKeyJwk;
+        } else if (activeContactId) {
+          // Attempt to fetch recipient public key from Cloudflare D1
+          try {
+            const recipientKey = await cloudflareApi.fetchUserPublicKey(activeContactId);
+            if (recipientKey) {
+              keysMap[activeContactId] = recipientKey;
+            }
+          } catch (e) {
+            console.debug('Recipient public key fetch:', e);
+          }
         }
+
+        encryptedEnvelope = await encryptGroupPayload(text || attachment?.name || 'Encrypted File', keysMap);
       } catch (err) {
         console.debug('E2EE envelope generation:', err);
       }

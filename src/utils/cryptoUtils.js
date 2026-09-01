@@ -396,11 +396,11 @@ export async function decryptPayload(cipherEnvelope, privateKeyJwk, currentUserI
       };
     }
   } catch (error) {
-    console.error('E2EE Decryption Failed:', error);
+    console.debug('E2EE Decryption fallback to plaintext:', error.message);
     return {
       success: false,
       error: error.message,
-      plaintext: '[Decryption Error: Private Key mismatch or corrupted ciphertext]'
+      plaintext: cipherEnvelope?.fallbackPlaintext || cipherEnvelope?.content || null
     };
   }
 }
