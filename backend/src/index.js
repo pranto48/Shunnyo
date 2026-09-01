@@ -251,6 +251,35 @@ export default {
         }
       }
 
+      // ── User Profile Update (POST /api/users/:id/update-profile) ──
+      if (pathname.startsWith('/api/users/') && pathname.endsWith('/update-profile') && request.method === 'POST') {
+        const parts = pathname.split('/');
+        const userId = parts[parts.length - 2];
+        const body = await request.json();
+        const { name, username, avatar, bio, role, status } = body;
+
+        try {
+          const now = Date.now();
+          await env.DB.prepare(
+            `UPDATE users SET 
+              display_name = COALESCE(?, display_name),
+              avatar_url = COALESCE(?, avatar_url),
+              status = COALESCE(?, status),
+              role = COALESCE(?, role),
+              last_seen = ?
+             WHERE id = ?`
+          ).bind(name || null, avatar || null, status || null, role || null, now, userId).run();
+
+          return jsonResponse({
+            success: true,
+            message: 'Profile updated successfully',
+            user: { id: userId, name, username, avatar, bio, role, status }
+          });
+        } catch (updateErr) {
+          return jsonResponse({ error: 'Profile update failed', detail: updateErr.message }, 500);
+        }
+      }
+
       // ── User Auth: Verify Token (GET /api/auth/verify) ──
       if (pathname === '/api/auth/verify' && request.method === 'GET') {
         const authHeader = request.headers.get('Authorization') || '';

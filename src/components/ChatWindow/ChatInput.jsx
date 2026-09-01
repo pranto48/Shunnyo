@@ -298,15 +298,59 @@ export default function ChatInput() {
       ) : (
         /* Normal Chat Input Control Bar */
         <div className="flex items-end space-x-1 sm:space-x-2">
-          {/* Quick Action Group (Attachment & Extra Tools) */}
+          {/* Quick Action Group (Facebook Messenger Style) */}
           <div className="flex items-center space-x-0.5 sm:space-x-1 flex-shrink-0">
-            {/* Attachment Button */}
+            {/* 1. Quick One-Tap Photos & Gallery Share (Facebook Messenger Style) */}
+            <input
+              id="chat-file-input-quick"
+              type="file"
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                sounds.playClick();
+                const localUrl = URL.createObjectURL(file);
+                setPendingAttachment({
+                  type: file.type.startsWith('video/') ? 'video' : 'image',
+                  url: localUrl,
+                  localUrl: localUrl,
+                  name: file.name,
+                  caption: file.name,
+                  size: file.size,
+                  file: file
+                });
+                // Async upload to R2
+                try {
+                  const arrayBuffer = await file.arrayBuffer();
+                  const blob = new Blob([arrayBuffer], { type: file.type });
+                  const res = await cloudflareApi.uploadEncryptedFile(blob, file.name, file.type, activeContact?.id || 'anon');
+                  if (res?.downloadUrl) {
+                    setPendingAttachment((prev) => prev ? { ...prev, url: res.downloadUrl, fileKey: res.fileKey } : prev);
+                  }
+                } catch (r2Err) {
+                  console.debug('Direct R2 attachment upload fallback:', r2Err);
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                sounds.playClick();
+                document.getElementById('chat-file-input-quick')?.click();
+              }}
+              title="ছবি বা গ্যালারি শেয়ার করুন (Photos & Media)"
+              className="p-2 sm:p-2.5 rounded-2xl text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 active:scale-90 transition-all duration-200"
+            >
+              <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent-cyan" />
+            </button>
+
+            {/* 2. Full Attachment Menu (Documents, Audio, Location) */}
             <button
               onClick={() => {
                 sounds.playClick();
                 setShowAttachmentMenu(!showAttachmentMenu);
               }}
-              title="Attach Files / Photos / Location (R2)"
+              title="ফাইল ও ডকুমেন্ট সংযুক্ত করুন (Attach Files & More)"
               className={`p-2 sm:p-2.5 rounded-2xl text-slate-400 hover:text-brand-300 hover:bg-brand-500/10 active:scale-90 transition-all duration-200 border ${
                 showAttachmentMenu ? 'bg-brand-500/20 border-brand-500/40 text-brand-300' : 'border-transparent'
               }`}
@@ -314,7 +358,7 @@ export default function ChatInput() {
               <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
-            {/* Text Style (Color & Size) Button - Hidden on very small screens to give max text space, visible on tablet+ or toggleable */}
+            {/* 3. Text Style (Color & Size) Button */}
             <button
               onClick={() => {
                 sounds.playClick();
@@ -330,7 +374,7 @@ export default function ChatInput() {
               <Palette className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
-            {/* Emoji Popover Button */}
+            {/* 4. Emoji Popover Button */}
             <button
               onClick={() => {
                 sounds.playClick();

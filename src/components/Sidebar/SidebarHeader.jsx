@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useChat } from '../../context/ChatContext';
 import { useCall } from '../../context/CallContext';
+import { useAuth } from '../../context/AuthContext';
 import Avatar from '../Shared/Avatar';
 import { 
   MessageSquarePlus, 
@@ -19,7 +20,8 @@ import {
   Plus, 
   Check, 
   Edit3,
-  Phone
+  Phone,
+  LogOut
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 
@@ -32,6 +34,7 @@ export default function SidebarHeader() {
     setShowCreateGroupModal, 
     updateUserProfile 
   } = useChat();
+  const { logout } = useAuth();
   const { missedCallCount, setShowCallHistory } = useCall();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
@@ -192,7 +195,7 @@ export default function SidebarHeader() {
               ))}
             </div>
 
-            <div className="border-t border-slate-800 pt-1">
+            <div className="border-t border-slate-800 pt-1 space-y-0.5">
               <button
                 onClick={() => {
                   sounds.playClick();
@@ -202,7 +205,19 @@ export default function SidebarHeader() {
                 className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs text-slate-300 hover:bg-white/5 hover:text-white transition-all font-semibold"
               >
                 <User className="w-4 h-4 text-brand-400" />
-                <span>প্রোফাইল ও বায়ো পরিবর্তন</span>
+                <span>প্রোফাইল ও ছবি পরিবর্তন</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  sounds.playClick();
+                  setShowStatusMenu(false);
+                  logout();
+                }}
+                className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs text-rose-400 hover:bg-rose-500/10 transition-all font-semibold"
+              >
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span>লগআউট করুন (Log Out)</span>
               </button>
             </div>
           </div>

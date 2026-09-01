@@ -5,6 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from '../../context/ChatContext';
+import { useAuth } from '../../context/AuthContext';
 import Avatar from '../Shared/Avatar';
 import { 
   User, 
@@ -18,13 +19,15 @@ import {
   Loader2,
   Mail,
   Key,
-  Edit3
+  Edit3,
+  LogOut
 } from 'lucide-react';
 import { sounds } from '../../utils/soundEffects';
 import { cloudflareApi } from '../../services/cloudflareApi';
 
 export default function UserProfileModal({ isOpen, onClose }) {
   const { currentUser, updateUserProfile, userKeyPair } = useChat();
+  const { logout } = useAuth();
   const fileInputRef = useRef(null);
 
   const [name, setName] = useState(currentUser.name || '');
@@ -65,39 +68,64 @@ export default function UserProfileModal({ isOpen, onClose }) {
       setIsUploading(true);
       sounds.playClick();
 
-      const arrayBuffer = await file.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: file.type || 'image/jpeg' });
+      // Convert to Base64 Data URL for instant rendering & offline persistence
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64Url = event.target.result;
+        setAvatar(base64Url);
 
-      // Upload to Cloudflare R2
-      const result = await cloudflareApi.uploadEncryptedFile(
-        blob,
-        `avatar_${currentUser.id}_${Date.now()}.jpg`,
-        file.type || 'image/jpeg',
-        currentUser.id
-      );
-
-      const uploadedUrl = result?.downloadUrl || URL.createObjectURL(file);
-      setAvatar(uploadedUrl);
+        // Also asynchronously upload to Cloudflare R2
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const blob = new Blob([arrayBuffer], { type: file.type || 'image/jpeg' });
+          const result = await cloudflareApi.uploadEncryptedFile(
+            blob,
+            `avatar_${currentUser.id}_${Date.now()}.jpg`,
+            file.type || 'image/jpeg',
+            currentUser.id
+          );
+          if (result?.downloadUrl) {
+            setAvatar(result.downloadUrl);
+          }
+        } catch (r2Err) {
+          console.debug('R2 avatar upload optional fallback:', r2Err);
+        }
+      };
+      reader.readAsDataURL(file);
       sounds.playMessageSent();
     } catch (err) {
-      console.warn('Avatar upload fallback to local preview:', err);
-      const localUrl = URL.createObjectURL(file);
-      setAvatar(localUrl);
+      console.warn('Avatar upload error:', err);
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     sounds.playClick();
-    updateUserProfile({
+    const updatedProfile = {
       name: name.trim(),
       username: username.trim().startsWith('@') ? username.trim() : `@${username.trim()}`,
       customStatus: bio.trim(),
       role: role.trim(),
       status: status,
       avatar: avatar
-    });
+    };
+
+    updateUserProfile(updatedProfile);
+
+    // Sync to backend D1 database
+    try {
+      if (currentUser?.id) {
+        await fetch(`https://shunnyo-backend.mail-cde.workers.dev/api/users/${currentUser.id}/update-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedProfile)
+        });
+      }
+    } catch (apiErr) {
+      console.debug('Backend profile sync:', apiErr);
+    }
+
     onClose();
   };
 
@@ -322,22 +350,37 @@ export default function UserProfileModal({ isOpen, onClose }) {
         </div>
 
         {/* Action Footer */}
-        <div className="flex items-center justify-end space-x-3 pt-4 mt-2 border-t border-slate-800 relative z-10">
+        <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-800 relative z-10">
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all"
+            onClick={() => {
+              sounds.playClick();
+              onClose();
+              logout();
+            }}
+            className="px-3.5 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-semibold flex items-center space-x-1.5 transition-all active:scale-95 border border-rose-500/30"
           >
-            বাতিল
+            <LogOut className="w-3.5 h-3.5" />
+            <span>লগআউট</span>
           </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-bold shadow-glow-brand flex items-center space-x-2 active:scale-95 transition-all"
-          >
-            <Check className="w-4 h-4" />
-            <span>প্রোফাইল সংরক্ষণ করুন</span>
-          </button>
+
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all"
+            >
+              বাতিল
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-bold shadow-glow-brand flex items-center space-x-1.5 active:scale-95 transition-all"
+            >
+              <Check className="w-4 h-4" />
+              <span>সংরক্ষণ করুন</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -193,7 +193,7 @@ export default function ChatHeader() {
           onClick={handleAudioCall}
           disabled={callState !== 'idle'}
           title="Start Audio Call"
-          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-900/60 hover:bg-brand-500/20 text-brand-400 hover:text-brand-300 border border-slate-800 hover:border-brand-500/40 active:scale-90 transition-all flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-900/60 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 border border-slate-800 hover:border-emerald-500/40 active:scale-90 transition-all flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
         >
           <Phone className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
         </button>
