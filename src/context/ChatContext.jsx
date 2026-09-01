@@ -425,6 +425,12 @@ export function ChatProvider({ children }) {
   const activeMessages = (messages && messages[activeContactId]) || [];
 
   const filteredContacts = contacts.filter((c) => {
+    // Exclude current logged in user from chat contact list
+    if (currentUserProfile) {
+      if (c.id === currentUserProfile.id || (c.username && c.username.toLowerCase() === currentUserProfile.username?.toLowerCase())) {
+        return false;
+      }
+    }
     if (filter === 'unread') return c.unreadCount > 0;
     if (filter === 'groups') return c.isGroup;
     if (filter === 'direct') return !c.isGroup;
@@ -432,8 +438,8 @@ export function ChatProvider({ children }) {
   }).filter((c) => {
     if (!searchQuery) return true;
     return (
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.username.toLowerCase().includes(searchQuery.toLowerCase())
+      c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.username?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
 

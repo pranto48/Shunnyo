@@ -36,32 +36,34 @@ export default function ContactItem({ contact }) {
   return (
     <div
       onClick={handleClick}
-      className={`w-full text-left p-3 rounded-2xl flex items-center space-x-3 transition-all duration-200 relative group select-none cursor-pointer ${
+      className={`w-full text-left p-3.5 rounded-2xl flex items-center space-x-3 transition-all duration-200 relative group select-none cursor-pointer border ${
         isActive
-          ? 'bg-gradient-to-r from-brand-600/20 via-indigo-900/30 to-background-card border border-brand-500/40 shadow-glow-brand'
-          : 'hover:bg-slate-800/40 hover:border-slate-700/40 border border-transparent'
+          ? 'bg-slate-800/80 border-emerald-500/50 shadow-md ring-1 ring-emerald-500/20'
+          : 'hover:bg-slate-800/50 hover:border-slate-700/60 border-transparent'
       }`}
     >
-      {/* Contact Avatar */}
-      <Avatar
-        src={contact.avatar}
-        name={contact.name}
-        status={contact.isGroup ? null : contact.status}
-        size="md"
-        ring={isActive}
-      />
+      {/* Contact Avatar (WhatsApp Styled) */}
+      <div className="relative flex-shrink-0">
+        <Avatar
+          src={contact.avatar}
+          name={contact.name}
+          status={contact.isGroup ? null : contact.status}
+          size="md"
+          ring={isActive}
+        />
+      </div>
 
       {/* Center Details */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
           <h4
             className={`text-sm font-semibold truncate flex items-center gap-1.5 ${
-              isActive ? 'text-white font-bold' : 'text-slate-200 group-hover:text-white'
+              isActive ? 'text-white font-bold' : 'text-slate-100 group-hover:text-white'
             }`}
           >
             {contact.name}
             {contact.isGroup && (
-              <Users className="w-3.5 h-3.5 text-accent-cyan flex-shrink-0" />
+              <Users className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
             )}
           </h4>
           {lastMsg && (
