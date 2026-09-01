@@ -107,24 +107,37 @@ export default function AudioCallView() {
   }
 
   // 2. One-on-One Audio Call View
+  // 2. One-on-One Audio Call View (WhatsApp Style)
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-between p-6 overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900/90 via-background-surface/90 to-slate-950/90">
-      {/* Top Bar: Metas */}
+    <div className="relative w-full h-full flex flex-col items-center justify-between p-6 sm:p-8 overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900/95 via-[#0b141a]/95 to-slate-950/95">
+      {/* Hidden Audio element to play remote audio stream */}
+      <audio
+        ref={(el) => {
+          if (el && useCall().remoteStream && el.srcObject !== useCall().remoteStream) {
+            el.srcObject = useCall().remoteStream;
+            el.play().catch((err) => console.debug('Auto-play audio stream:', err));
+          }
+        }}
+        autoPlay
+        playsInline
+      />
+
+      {/* Top Header: WhatsApp Style End-to-End Encryption Banner */}
       <div className="relative z-10 w-full flex items-center justify-between">
-        <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-2xl glass-card text-xs text-slate-200">
-          <ShieldCheck className="w-4 h-4 text-accent-cyan" />
-          <span>Shunnyo Encrypted Audio</span>
+        <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span className="font-medium">End-to-End Encrypted</span>
         </div>
 
-        <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl glass-card text-xs font-mono text-emerald-400">
+        <div className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-emerald-400 shadow-sm">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span>{callState === 'calling' ? 'Ringing...' : 'Connected'}</span>
+          <span>{callState === 'calling' ? 'Calling...' : callState === 'incoming' ? 'Incoming...' : 'Connected'}</span>
         </div>
       </div>
 
-      {/* Center: Pulsing Avatar & Audio Waveform */}
+      {/* Center: Large WhatsApp Avatar & Status */}
       <div className="relative z-10 flex flex-col items-center justify-center space-y-6 my-auto">
-        {/* Pulsing Avatar with Radar Rings */}
+        {/* Large Rounded WhatsApp Avatar with Ringing Pulse */}
         <div className="relative flex items-center justify-center">
           <Avatar
             src={callTarget?.avatar}
@@ -132,39 +145,38 @@ export default function AudioCallView() {
             size="2xl"
             ring={true}
             showStatus={false}
-            className="shadow-glow-brand z-10 ring-4 ring-brand-500/50"
+            className="shadow-2xl z-10 ring-4 ring-emerald-500/40"
           />
 
-          {/* Animated Glow Rings */}
-          <div className="absolute w-44 h-44 rounded-full border border-brand-500/30 animate-ping opacity-30 pointer-events-none" />
+          {/* Animated WhatsApp Style Rings */}
+          <div className="absolute w-44 h-44 rounded-full border border-emerald-500/30 animate-ping opacity-30 pointer-events-none" />
           <div
-            className="absolute w-56 h-56 rounded-full border border-indigo-500/20 animate-ping opacity-20 pointer-events-none"
+            className="absolute w-56 h-56 rounded-full border border-emerald-500/20 animate-ping opacity-20 pointer-events-none"
             style={{ animationDelay: '0.4s' }}
           />
           <div
-            className="absolute w-72 h-72 rounded-full border border-accent-cyan/15 animate-ping opacity-15 pointer-events-none"
+            className="absolute w-72 h-72 rounded-full border border-teal-500/15 animate-ping opacity-15 pointer-events-none"
             style={{ animationDelay: '0.8s' }}
           />
         </div>
 
-        {/* Remote User Details */}
-        <div className="text-center space-y-1">
+        {/* Remote User Details & Call Timer */}
+        <div className="text-center space-y-1.5">
           <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
             {callTarget?.name}
           </h2>
-          <p className="text-sm text-slate-400 font-mono">
-            {callTarget?.role || callTarget?.username}
+          <p className="text-sm text-emerald-400/90 font-medium">
+            {callState === 'calling' 
+              ? 'Ringing...' 
+              : callState === 'connected' 
+              ? formatDuration(callDuration) 
+              : 'Connecting...'}
           </p>
-          <div className="pt-2">
-            <span className="px-4 py-1 rounded-full bg-brand-500/20 border border-brand-500/30 text-brand-300 text-sm font-mono font-bold tracking-widest inline-block shadow-sm">
-              {formatDuration(callDuration)}
-            </span>
-          </div>
         </div>
 
-        {/* Live Audio Waveform Bars Simulation */}
-        <div className="flex items-center justify-center space-x-1.5 h-12 pt-2">
-          {[30, 60, 95, 45, 80, 100, 50, 70, 85, 40, 90, 65, 35, 75, 95, 55, 30].map(
+        {/* WhatsApp Audio Waveform Bar Visualizer */}
+        <div className="flex items-center justify-center space-x-1.5 h-10 pt-2">
+          {[25, 55, 90, 40, 75, 95, 45, 65, 80, 35, 85, 60, 30, 70, 90, 50, 25].map(
             (height, idx) => (
               <div
                 key={idx}
@@ -172,8 +184,8 @@ export default function AudioCallView() {
                   height: callState === 'connected' ? `${height}%` : '20%',
                   animationDuration: `${0.8 + (idx % 5) * 0.2}s`
                 }}
-                className={`w-1.5 rounded-full bg-gradient-to-t from-brand-600 via-indigo-400 to-accent-cyan transition-all duration-300 ${
-                  callState === 'connected' ? 'animate-pulse' : 'opacity-40'
+                className={`w-1.5 rounded-full bg-gradient-to-t from-emerald-600 via-teal-400 to-cyan-300 transition-all duration-300 ${
+                  callState === 'connected' ? 'animate-pulse' : 'opacity-30'
                 }`}
               />
             )

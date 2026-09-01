@@ -21,11 +21,11 @@ export default function IncomingCallDialog() {
         <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-emerald-500/20 rounded-full blur-3xl" />
 
         {/* Top badge */}
-        <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-xs text-brand-300 font-medium mb-4">
+        <div className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300 font-medium mb-4 shadow-sm">
           {callType === 'video' ? (
-            <Video className="w-3.5 h-3.5 text-brand-400" />
+            <Video className="w-3.5 h-3.5 text-emerald-400" />
           ) : (
-            <Phone className="w-3.5 h-3.5 text-accent-emerald" />
+            <Phone className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
           )}
           <span>ইনকামিং {callType === 'video' ? 'ভিডিও' : 'অডিও'} কল...</span>
         </div>
@@ -38,9 +38,9 @@ export default function IncomingCallDialog() {
             size="2xl"
             ring={true}
             showStatus={false}
-            className="shadow-glow-brand"
+            className="shadow-2xl ring-4 ring-emerald-500/40"
           />
-          <div className="absolute inset-0 rounded-full border-2 border-brand-400 animate-ping opacity-50" />
+          <div className="absolute inset-0 rounded-full border-2 border-emerald-400 animate-ping opacity-50 pointer-events-none" />
         </div>
 
         {/* Caller Info */}
