@@ -235,30 +235,103 @@ export class SignalingRoom {
 
           // --- 4. WebRTC P2P Call Signaling ---
           case 'offer':
-            this.broadcast(webSocket, {
-              type: 'offer',
-              data: { sdp: data.sdp, fromPeerId: peerId, callType: data.callType, callerName: username }
-            });
+            {
+              const targetRecipientId = data.calleeId || data.recipientId;
+              let deliveredDirectly = false;
+              if (targetRecipientId) {
+                for (const [ws, session] of this.sessions.entries()) {
+                  if (ws !== webSocket && (session.userId === targetRecipientId || session.peerId === targetRecipientId)) {
+                    if (ws.readyState === 1) { // OPEN
+                      ws.send(JSON.stringify({
+                        type: 'offer',
+                        data: { 
+                          sdp: data.sdp, 
+                          fromPeerId: peerId, 
+                          callerId: userId,
+                          callerName: username,
+                          calleeId: targetRecipientId,
+                          callType: data.callType || 'audio'
+                        }
+                      }));
+                      deliveredDirectly = true;
+                    }
+                  }
+                }
+              }
+
+              if (!deliveredDirectly) {
+                this.broadcast(webSocket, {
+                  type: 'offer',
+                  data: { 
+                    sdp: data.sdp, 
+                    fromPeerId: peerId, 
+                    callerId: userId,
+                    callerName: username,
+                    calleeId: targetRecipientId,
+                    callType: data.callType || 'audio'
+                  }
+                });
+              }
+            }
             break;
 
           case 'answer':
-            this.broadcast(webSocket, {
-              type: 'answer',
-              data: { sdp: data.sdp, fromPeerId: peerId }
-            });
+            {
+              const targetCallerId = data.calleeId || data.callerId || data.recipientId;
+              let deliveredDirectly = false;
+              if (targetCallerId) {
+                for (const [ws, session] of this.sessions.entries()) {
+                  if (ws !== webSocket && (session.userId === targetCallerId || session.peerId === targetCallerId)) {
+                    if (ws.readyState === 1) {
+                      ws.send(JSON.stringify({
+                        type: 'answer',
+                        data: { sdp: data.sdp, fromPeerId: peerId, senderId: userId }
+                      }));
+                      deliveredDirectly = true;
+                    }
+                  }
+                }
+              }
+
+              if (!deliveredDirectly) {
+                this.broadcast(webSocket, {
+                  type: 'answer',
+                  data: { sdp: data.sdp, fromPeerId: peerId, senderId: userId }
+                });
+              }
+            }
             break;
 
           case 'ice-candidate':
-            this.broadcast(webSocket, {
-              type: 'ice-candidate',
-              data: { candidate: data.candidate, fromPeerId: peerId }
-            });
+            {
+              const targetPeer = data.calleeId || data.recipientId;
+              let delivered = false;
+              if (targetPeer) {
+                for (const [ws, session] of this.sessions.entries()) {
+                  if (ws !== webSocket && (session.userId === targetPeer || session.peerId === targetPeer)) {
+                    if (ws.readyState === 1) {
+                      ws.send(JSON.stringify({
+                        type: 'ice-candidate',
+                        data: { candidate: data.candidate, fromPeerId: peerId }
+                      }));
+                      delivered = true;
+                    }
+                  }
+                }
+              }
+              if (!delivered) {
+                this.broadcast(webSocket, {
+                  type: 'ice-candidate',
+                  data: { candidate: data.candidate, fromPeerId: peerId }
+                });
+              }
+            }
             break;
 
           case 'hangup':
             this.broadcast(webSocket, {
               type: 'hangup',
-              data: { fromPeerId: peerId }
+              data: { fromPeerId: peerId, senderId: userId }
             });
             break;
 

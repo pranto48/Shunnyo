@@ -108,31 +108,67 @@ export function CallProvider({ children }) {
     });
 
     // Listen for incoming 1-on-1 call signals over WebSocket
-    const unsubOffer = liveChatService.on('offer', (data) => {
+    const unsubOffer = async (data) => {
       console.log('[WebRTC Call] Incoming call offer received:', data);
-      if (callState === 'idle') {
+      // Ensure the offer is intended for this user
+      if (data.calleeId && data.calleeId !== currentUser.id) {
+        return;
+      }
+      if (data.callerId === currentUser.id) {
+        return;
+      }
+
+      if (callState === 'idle' || callState === 'ended') {
         const callerContact = {
-          id: data.fromPeerId || data.callerId || 'peer_caller',
+          id: data.callerId || data.fromPeerId || 'peer_caller',
           name: data.callerName || 'Online Peer',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+          avatar: data.callerAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
           status: 'online',
-          role: 'Audio Caller'
+          role: 'Caller'
         };
+
+        // Cache remote offer SDP for answer
+        if (data.sdp) {
+          webrtcService.remoteOfferSdp = data.sdp;
+        }
+
         receiveCall(callerContact, data.callType || 'audio');
       }
-    });
+    };
 
-    const unsubAnswer = liveChatService.on('answer', async (data) => {
-      console.log('[WebRTC Call] Remote call answer received');
+    const unsubAnswer = async (data) => {
+      console.log('[WebRTC Call] Remote call answer received:', data);
       sounds.stopRingtone();
+      if (data.sdp) {
+        try {
+          await webrtcService.handleAnswer(data.sdp);
+        } catch (e) {
+          console.warn('[WebRTC] handleAnswer error:', e);
+        }
+      }
       setCallState('connected');
       sounds.playCallConnected();
-    });
+    };
 
-    const unsubHangup = liveChatService.on('hangup', () => {
+    const unsubIce = async (data) => {
+      if (data?.candidate) {
+        try {
+          await webrtcService.handleRemoteIceCandidate(data.candidate);
+        } catch (e) {
+          console.debug('[WebRTC] handleIceCandidate error:', e);
+        }
+      }
+    };
+
+    const unsubHangup = () => {
       console.log('[WebRTC Call] Remote peer hung up');
       endCall();
-    });
+    };
+
+    liveChatService.on('offer', unsubOffer);
+    liveChatService.on('answer', unsubAnswer);
+    liveChatService.on('ice-candidate', unsubIce);
+    liveChatService.on('hangup', unsubHangup);
 
     // Listen for Group Audio Call Announcements
     const unsubGroupStart = liveChatService.on('group_call:start', (data) => {
@@ -360,11 +396,19 @@ export function CallProvider({ children }) {
       const stream = await webrtcService.getLocalMediaStream(callType);
       setLocalStream(stream);
 
-      const answer = await webrtcService.createAnswer();
+      let answer;
+      if (webrtcService.remoteOfferSdp) {
+        answer = await webrtcService.handleOffer(webrtcService.remoteOfferSdp);
+      } else {
+        answer = await webrtcService.createAnswer();
+      }
+
       liveChatService.sendPayload('answer', {
         sdp: answer?.sdp,
         fromPeerId: currentUser.id,
-        calleeId: callTarget?.id
+        callerId: currentUser.id,
+        calleeId: callTarget?.id,
+        recipientId: callTarget?.id
       });
     } catch (e) {
       console.warn('WebRTC accept error:', e);
