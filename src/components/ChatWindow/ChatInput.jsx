@@ -3,7 +3,7 @@
  * All rights reserved. Shunnyo (https://shunnyo.itsupport.com.bd)
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from '../../context/ChatContext';
 import { useCall } from '../../context/CallContext';
 import EmojiPicker from './EmojiPicker';
@@ -51,6 +51,15 @@ export default function ChatInput() {
 
   const inputRef = useRef(null);
   const typingTimerRef = useRef(null);
+
+  // Auto-resize textarea height dynamically based on content on mobile and desktop
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const newHeight = Math.min(el.scrollHeight, 140);
+    el.style.height = `${Math.max(newHeight, 42)}px`;
+  }, [text]);
 
   const colorSwatches = [
     { label: 'ডিফল্ট', value: '', color: 'bg-slate-200 border-white/40' },
@@ -101,6 +110,10 @@ export default function ChatInput() {
     setPendingAttachment(null);
     setShowEmojiPicker(false);
     setShowAttachmentMenu(false);
+
+    if (inputRef.current) {
+      inputRef.current.style.height = '42px';
+    }
   };
 
   const handleKeyDown = (e) => {
